@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiqPay — Оплата</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #00b140;
+    --green-dark: #009933;
+    --gray-bg: #f4f5f7;
+    --white: #ffffff;
+    --text: #1a1a2e;
+    --muted: #7a7f9a;
+    --border: #e2e5ef;
+    --error: #e53935;
+    --shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--gray-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .card {
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: var(--green);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-logo {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .header-logo span { opacity: 0.7; }
+  .header-lock {
+    margin-left: auto;
+    background: rgba(255,255,255,0.2);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Merchant info */
+  .merchant {
+    padding: 20px 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .merchant-icon {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #00b140, #007a2e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .merchant-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .merchant-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* Amount */
+  .amount-block {
+    padding: 16px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .amount-label { font-size: 13px; color: var(--muted); }
+  .amount-value { font-size: 28px; font-weight: 700; color: var(--text); margin-left: auto; }
+  .amount-currency { font-size: 16px; font-weight: 600; color: var(--muted); }
+
+  /* Form */
+  .form { padding: 20px 24px; }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 7px;
+  }
+  .field input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 16px;
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .field input:focus { border-color: var(--green); }
+  .field input.error { border-color: var(--error); }
+  .field input::placeholder { color: #c0c4d4; letter-spacing: 0; }
+
+  .row { display: flex; gap: 12px; }
+  .row .field { flex: 1; }
+
+  .card-visual {
+    background: linear-gradient(135deg, #1a1a2e, #2d3561);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-visual::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+  }
+  .card-visual::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; right: 20px;
+    width: 80px; height: 80px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+  }
+  .card-chip {
+    width: 32px; height: 24px;
+    background: linear-gradient(135deg, #d4a843, #f0c850);
+    border-radius: 5px;
+    margin-bottom: 14px;
+  }
+  .card-number-display {
+    font-size: 17px;
+    letter-spacing: 3px;
+    margin-bottom: 14px;
+    font-weight: 500;
+    min-height: 26px;
+  }
+  .card-bottom { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.7; }
+
+  .pay-btn {
+    width: 100%;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 4px;
+  }
+  .pay-btn:hover { background: var(--green-dark); }
+  .pay-btn:active { transform: scale(0.98); }
+  .pay-btn:disabled { background: #b0bec5; cursor: not-allowed; }
+
+  .secure-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Processing overlay */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .processing-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 36px 32px;
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+    box-shadow: var(--shadow);
+  }
+  .spinner {
+    width: 52px; height: 52px;
+    border: 4px solid #e8f5e9;
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .processing-step { font-size: 14px; color: var(--muted); min-height: 22px; transition: all 0.3s; }
+
+  /* Success overlay */
+  .success-box { display: none; text-align: center; }
+  .success-box.show { display: block; }
+  .checkmark {
+    width: 64px; height: 64px;
+    background: #e8f5e9;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 30px;
+  }
+  .success-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .success-sub { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+  .back-btn {
+    display: inline-block;
+    background: var(--green);
+    color: #fff;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .error-msg { font-size: 12px; color: var(--error); margin-top: 5px; display: none; }
+  .error-msg.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="card" id="mainCard">
+  <div class="header">
+    <div class="header-logo">Liq<span>Pay</span></div>
+    <div class="header-lock">🔒 Захищено</div>
+  </div>
+
+  <div class="merchant">
+    <div class="merchant-icon">📢</div>
+    <div>
+      <div class="merchant-name" id="merchantName">Завантаження...</div>
+      <div class="merchant-desc" id="merchantDesc">Підписка на групу</div>
+    </div>
+  </div>
+
+  <div class="amount-block">
+    <div class="amount-label">До сплати</div>
+    <div style="margin-left:auto;display:flex;align-items:baseline;gap:6px">
+      <div class="amount-value" id="amountValue">—</div>
+      <div class="amount-currency">грн</div>
+    </div>
+  </div>
+
+  <div class="form">
+    <div class="card-visual">
+      <div class="card-chip"></div>
+      <div class="card-number-display" id="cardDisplay">•••• •••• •••• ••••</div>
+      <div class="card-bottom">
+        <span id="cardHolder">ІМ'Я ПРІЗВИЩЕ</span>
+        <span id="cardExpiry">MM/YY</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Номер картки</label>
+      <input type="tel" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric">
+      <div class="error-msg" id="cardError">Введіть коректний номер картки</div>
+    </div>
+
+    <div class="field">
+      <label>Ім'я на картці</label>
+      <input type="text" id="cardName" placeholder="IVAN PETRENKO" style="text-transform:uppercase">
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Термін дії</label>
+        <input type="tel" id="cardExp" placeholder="MM/YY" maxlength="5" inputmode="numeric">
+        <div class="error-msg" id="expError">Невірний формат</div>
+      </div>
+      <div class="field">
+        <label>CVV</label>
+        <input type="tel" id="cardCvv" placeholder="•••" maxlength="3" inputmode="numeric">
+        <div class="error-msg" id="cvvError">3 цифри</div>
+      </div>
+    </div>
+
+    <button class="pay-btn" id="payBtn" onclick="startPayment()">Оплатити</button>
+
+    <div class="secure-row">
+      🔐 Дані захищені шифруванням SSL
+    </div>
+  </div>
+</div>
+
+<!-- Processing overlay -->
+<div class="overlay" id="overlay">
+  <div class="processing-box" id="processingBox">
+    <div class="spinner" id="spinner"></div>
+    <div class="processing-title">Обробка платежу</div>
+    <div class="processing-step" id="processingStep">Підключення до банку...</div>
+  </div>
+
+  <div class="success-box" id="successBox">
+    <div class="checkmark">✅</div>
+    <div class="success-title">Оплату здійснено!</div>
+    <div class="success-sub" id="successSub">Підписка активована.<br>Поверніться до бота.</div>
+    <a href="#" class="back-btn" id="backBtn" onclick="goBack()">Повернутися до бота →</a>
+  </div>
+</div>
+
+<script>
+  // Параметри з URL
+  const params = new URLSearchParams(location.search);
+  const amount  = params.get('amount')  || '199';
+  const plan    = params.get('plan')    || '1 місяць';
+  const orderId = params.get('order')   || '';
+  const botUrl  = params.get('bot')     || 'https://t.me/your_bot';
+  const groupName = params.get('name')  || 'Наша група';
+
+  document.getElementById('amountValue').textContent   = amount;
+  document.getElementById('merchantName').textContent  = groupName;
+  document.getElementById('payBtn').textContent        = `Оплатити ${amount} грн`;
+
+  // Форматування номера картки
+  document.getElementById('cardNumber').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 16);
+    e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
+    const masked = v.padEnd(16, '•').replace(/(.{4})/g, '$1 ').trim();
+    document.getElementById('cardDisplay').textContent = masked || '•••• •••• •••• ••••';
+  });
+
+  // Форматування терміну
+  document.getElementById('cardExp').addEventListener('input', function(e) {
+    let v = e.target.value.replace(/\D/g, '').substring(0, 4);
+    if (v.length >= 2) v = v.substring(0,2) + '/' + v.substring(2);
+    e.target.value = v;
+    document.getElementById('cardExpiry').textContent = v || 'MM/YY';
+  });
+
+  // Ім'я
+  document.getElementById('cardName').addEventListener('input', function(e) {
+    document.getElementById('cardHolder').textContent = e.target.value.toUpperCase() || "ІМ'Я ПРІЗВИЩЕ";
+  });
+
+  function validate() {
+    let ok = true;
+    const card = document.getElementById('cardNumber').value.replace(/\s/g,'');
+    const exp  = document.getElementById('cardExp').value;
+    const cvv  = document.getElementById('cardCvv').value;
+
+    document.getElementById('cardError').classList.remove('show');
+    document.getElementById('expError').classList.remove('show');
+    document.getElementById('cvvError').classList.remove('show');
+    document.getElementById('cardNumber').classList.remove('error');
+    document.getElementById('cardExp').classList.remove('error');
+    document.getElementById('cardCvv').classList.remove('error');
+
+    if (card.length !== 16) {
+      document.getElementById('cardError').classList.add('show');
+      document.getElementById('cardNumber').classList.add('error');
+      ok = false;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(exp)) {
+      document.getElementById('expError').classList.add('show');
+      document.getElementById('cardExp').classList.add('error');
+      ok = false;
+    }
+    if (cvv.length !== 3) {
+      document.getElementById('cvvError').classList.add('show');
+      document.getElementById('cardCvv').classList.add('error');
+      ok = false;
+    }
+    return ok;
+  }
+
+  async function startPayment() {
+    if (!validate()) return;
+
+    document.getElementById('payBtn').disabled = true;
+    document.getElementById('overlay').classList.add('show');
+    document.getElementById('processingBox').style.display = 'block';
+    document.getElementById('successBox').classList.remove('show');
+
+    const steps = [
+      'Підключення до банку...',
+      'Перевірка картки...',
+      'Перевірка безпеки 3D Secure...',
+      'Авторизація платежу...',
+      'Списання коштів...',
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      document.getElementById('processingStep').textContent = steps[i];
+      await sleep(900);
+    }
+
+    // Повідомляємо бота про успіх
+    if (orderId) {
+      try {
+        await fetch(`/payment/confirm?order=${orderId}`);
+      } catch(e) {}
+    }
+
+    // Показуємо успіх
+    document.getElementById('processingBox').style.display = 'none';
+    document.getElementById('successBox').classList.add('show');
+    document.getElementById('successSub').innerHTML =
+      `Тариф: <b>${plan}</b><br>Сума: <b>${amount} грн</b><br><br>Поверніться до бота 👇`;
+    document.getElementById('backBtn').href = botUrl;
+  }
+
+  function goBack() {
+    window.location.href = document.getElementById('backBtn').href;
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>

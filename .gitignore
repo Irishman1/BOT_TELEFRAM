@@ -1,0 +1,30 @@
+# Секретні дані - НІКОЛИ не завантажувати
+.env
+
+# База даних
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Віртуальне середовище
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Логи
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
