@@ -20,3 +20,9 @@ GROUP_DESCRIPTION = "Опис — що отримає учасник"
 
 # Режим: True = безкоштовно (зараз), False = платно
 FREE_ACCESS = True
+
+PLANS = {
+    "1m": {"name": "1 місяць", "days": 30, "price": 199, "currency": "UAH"},
+    "3m": {"name": "3 місяці", "days": 90, "price": 499, "currency": "UAH"},
+    "1y": {"name": "1 рік",    "days": 365,"price": 1499,"currency": "UAH"},
+}
