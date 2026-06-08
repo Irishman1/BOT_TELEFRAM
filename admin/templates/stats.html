@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Статистика{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Статистика</h2>
+  <p>Загальна картина підписок і доходів</p>
+</div>
+
+<div class="metric-grid">
+  <div class="metric">
+    <div class="metric-label">Активних підписок</div>
+    <div class="metric-value">{{ active }}</div>
+    <span class="metric-badge badge-up">зараз</span>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Всього користувачів</div>
+    <div class="metric-value">{{ total }}</div>
+    <span class="metric-badge badge-up">за весь час</span>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Дохід цього місяця</div>
+    <div class="metric-value">{{ monthly }} грн</div>
+    <span class="metric-badge badge-up">поточний місяць</span>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Закінчується скоро</div>
+    <div class="metric-value">{{ expiring }}</div>
+    <span class="metric-badge badge-warn">до 3 днів</span>
+  </div>
+</div>
+
+<div class="charts-grid">
+  <div class="card">
+    <div class="card-header"><h3>Нові підписки по місяцях</h3></div>
+    <div class="card-body">
+      <div style="position:relative;height:220px;">
+        <canvas id="chartSubs" role="img" aria-label="Графік нових підписок по місяцях"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Дохід по місяцях (грн)</h3></div>
+    <div class="card-body">
+      <div style="position:relative;height:220px;">
+        <canvas id="chartRev" role="img" aria-label="Графік доходу по місяцях"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Розподіл по тарифах</h3></div>
+  <div class="card-body" style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
+    <div style="position:relative;height:200px;width:200px;flex-shrink:0;">
+      <canvas id="chartPlans" role="img" aria-label="Тарифи"></canvas>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;">
+      {% for p in plans_dist %}
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:12px;height:12px;border-radius:3px;background:{{ ['#534AB7','#1D9E75','#D85A30','#888'][loop.index0 % 4] }};flex-shrink:0;"></span>
+        <span>{{ plans.get(p.plan, p.plan) }} — <strong>{{ p.cnt }}</strong> чол.</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+const monthNames = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру'];
+const subsData = {{ monthly_subs | tojson }};
+const revData  = {{ monthly_rev  | tojson }};
+const plansData = {{ plans_dist  | tojson }};
+
+const subLabels = subsData.map(d => monthNames[parseInt(d.month)-1]);
+const subVals   = subsData.map(d => d.cnt);
+const revLabels = revData.map(d => monthNames[parseInt(d.month)-1]);
+const revVals   = revData.map(d => Math.round(d.total));
+const planLabels = plansData.map(d => d.plan);
+const planVals   = plansData.map(d => d.cnt);
+
+new Chart(document.getElementById('chartSubs'), {
+  type: 'bar',
+  data: { labels: subLabels.length ? subLabels : ['—'], datasets: [{ data: subVals.length ? subVals : [0], backgroundColor: '#534AB7', borderRadius: 5 }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+new Chart(document.getElementById('chartRev'), {
+  type: 'line',
+  data: { labels: revLabels.length ? revLabels : ['—'], datasets: [{ data: revVals.length ? revVals : [0], borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.1)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#1D9E75' }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() } } } }
+});
+new Chart(document.getElementById('chartPlans'), {
+  type: 'doughnut',
+  data: { labels: planLabels, datasets: [{ data: planVals.length ? planVals : [1], backgroundColor: ['#534AB7','#1D9E75','#D85A30','#888'], borderWidth: 0 }] },
+  options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
+});
+</script>
+{% endblock %}

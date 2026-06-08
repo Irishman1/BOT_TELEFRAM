@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Пошук{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Пошук користувача</h2><p>Знайди будь-якого підписника</p></div>
+<div class="card card-body" style="max-width:480px;">
+  <form method="POST">
+    <div class="form-group">
+      <label>Username або Telegram ID</label>
+      <input type="text" name="q" placeholder="@username або 123456789" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Знайти</button>
+  </form>
+  {% if result %}
+  <div style="margin-top:20px;border-top:1px solid #e5e7ef;padding-top:20px;">
+    <div class="user-card">
+      <div class="user-card-name">
+        {{ result.full_name or result.username }}
+        {% if result.is_active %}<span class="badge badge-active" style="margin-left:8px;">Активний</span>
+        {% else %}<span class="badge badge-expired" style="margin-left:8px;">Неактивний</span>{% endif %}
+      </div>
+      <div class="user-meta">
+        <div class="user-meta-item"><label>Username</label><p>@{{ result.username or '—' }}</p></div>
+        <div class="user-meta-item"><label>Telegram ID</label><p>{{ result.tg_id }}</p></div>
+        <div class="user-meta-item"><label>Тариф</label><p>{{ plans.get(result.plan, result.plan or '—') }}</p></div>
+        <div class="user-meta-item"><label>Підписка до</label><p>{{ result.expires_at[:10] if result.expires_at else '—' }}</p></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <a href="/give?u={{ result.username }}" class="btn btn-primary" style="font-size:13px;padding:7px 14px;">Продовжити</a>
+        <a href="/kick?u={{ result.username }}" class="btn btn-danger" style="font-size:13px;padding:7px 14px;">Видалити</a>
+      </div>
+    </div>
+  </div>
+  {% elif request.method == 'POST' %}
+  <div class="alert alert-danger" style="margin-top:16px;">Користувача не знайдено</div>
+  {% endif %}
+</div>
+{% endblock %}

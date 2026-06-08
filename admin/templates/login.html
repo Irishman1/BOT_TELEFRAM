@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вхід — Bot Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: #f5f6fa; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.card { background: #fff; border: 1px solid #e5e7ef; border-radius: 14px; padding: 32px; width: 100%; max-width: 360px; }
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+p { font-size: 14px; color: #6b7280; margin-bottom: 24px; }
+label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+input { width: 100%; padding: 9px 12px; font-size: 14px; font-family: 'Inter', sans-serif; border: 1px solid #e5e7ef; border-radius: 8px; outline: none; margin-bottom: 14px; }
+input:focus { border-color: #534AB7; }
+.btn { width: 100%; padding: 10px; background: #534AB7; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; font-family: 'Inter', sans-serif; cursor: pointer; }
+.btn:hover { background: #3C3489; }
+.error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🤖 Bot Admin</h1>
+  <p>Введіть дані для входу</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST">
+    <label>Логін</label>
+    <input type="text" name="login" placeholder="admin" required>
+    <label>Пароль</label>
+    <input type="password" name="password" placeholder="••••••••" required>
+    <button class="btn">Увійти →</button>
+  </form>
+</div>
+</body>
+</html>

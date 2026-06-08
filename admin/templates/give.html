@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Видати доступ{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Видати доступ</h2><p>Надати безкоштовний доступ на N днів</p></div>
+<div class="card card-body" style="max-width:480px;">
+  {% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+  <form method="POST">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" name="username" value="{{ request.args.get('u','') }}" placeholder="@username" required>
+    </div>
+    <div class="form-group">
+      <label>Кількість днів</label>
+      <input type="number" name="days" value="30" min="1" max="365" required>
+    </div>
+    <button class="btn btn-primary" type="submit">Видати доступ</button>
+  </form>
+</div>
+{% endblock %}
