@@ -1,18 +1,9 @@
-{% extends "base.html" %}
-{% block title %}Видалити{% endblock %}
-{% block content %}
 <div class="page-header"><h2>Видалити користувача</h2><p>Кік з групи і скасування підписки</p></div>
 <div class="card card-body" style="max-width:480px;">
-  {% if msg %}<div class="alert {{ 'alert-success' if '✅' in msg else 'alert-danger' }}">{{ msg }}</div>{% endif %}
-  <div class="alert alert-warn" style="margin-bottom:20px;">
-    ⚠️ Користувача буде видалено з групи і підписку скасовано. Дія незворотна.
-  </div>
+  {{msg}}
+  <div class="alert alert-warn" style="margin-bottom:20px;">⚠️ Користувача буде видалено з групи. Дія незворотна.</div>
   <form method="POST">
-    <div class="form-group">
-      <label>Username</label>
-      <input type="text" name="username" value="{{ request.args.get('u','') }}" placeholder="@username" required>
-    </div>
-    <button class="btn btn-danger" type="submit" style="background:#dc2626;color:#fff;border:none;">Видалити користувача</button>
+    <div class="form-group"><label>Username</label><input type="text" name="username" value="{{prefill}}" placeholder="@username" required></div>
+    <button class="btn btn-danger" type="submit" style="background:#dc2626;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;">Видалити</button>
   </form>
 </div>
-{% endblock %}

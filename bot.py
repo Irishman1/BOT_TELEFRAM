@@ -9,6 +9,7 @@ from database import init_db
 from handlers import user, admin
 from handlers.payments import setup_webhook_server
 from scheduler import start_scheduler
+from admin.panel import setup_admin
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,25 +22,22 @@ async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
 
-    # Регистрируем роутеры
     dp.include_router(user.router)
     dp.include_router(admin.router)
 
-    # Инициализируем БД
     await init_db()
-
-    # Запускаем планировщик
     await start_scheduler(bot)
 
-    # Webhook сервер для LiqPay (порт 8080)
-    webhook_app = setup_webhook_server(bot)
-    runner = web.AppRunner(webhook_app)
+    # Один сервер — і webhook і адмінка
+    app = setup_webhook_server(bot)
+    setup_admin(app)
+
+    runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", 8080)
     await site.start()
-    logger.info("Webhook server started on :8080")
+    logger.info("Server started on :8080 (webhook + admin panel)")
 
-    logger.info("Бот запущено!")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
 

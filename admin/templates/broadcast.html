@@ -1,20 +1,12 @@
-{% extends "base.html" %}
-{% block title %}Розсилка{% endblock %}
-{% block content %}
 <div class="page-header"><h2>Розсилка</h2><p>Надіслати повідомлення всім активним підписникам</p></div>
 <div class="card card-body" style="max-width:560px;">
-  {% if result %}
-  <div class="alert alert-success">
-    ✅ Розсилку завершено — надіслано: <strong>{{ result.sent }}</strong>, помилок: <strong>{{ result.failed }}</strong>
-  </div>
-  {% endif %}
+  {{result}}
   <form method="POST">
     <div class="form-group">
       <label>Текст повідомлення</label>
-      <textarea name="text" placeholder="Введіть текст...&#10;&#10;Підтримується HTML: &lt;b&gt;жирний&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;" required></textarea>
-      <div style="font-size:12px;color:#6b7280;margin-top:6px;">Підтримується: &lt;b&gt; &lt;i&gt; &lt;a href=&quot;...&quot;&gt;</div>
+      <textarea name="text" placeholder="Введіть текст...&#10;&#10;Підтримується HTML: &lt;b&gt; &lt;i&gt; &lt;a href=&quot;...&quot;&gt;" required></textarea>
+      <div style="font-size:12px;color:#6b7280;margin-top:6px;">Підтримується: &lt;b&gt; &lt;i&gt; &lt;a href="..."&gt;</div>
     </div>
     <button class="btn btn-primary" type="submit">Надіслати всім підписникам</button>
   </form>
 </div>
-{% endblock %}
