@@ -4,7 +4,7 @@ from aiohttp import web
 from aiogram import Bot
 from datetime import datetime, timedelta
 
-from config import PLANS, GROUP_ID, WEBHOOK_PATH
+from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME
 from database import (
     get_pending_order, delete_pending_order,
     payment_exists, save_payment,
@@ -101,33 +101,33 @@ async def paypal_cancel(request: web.Request) -> web.Response:
 
 
 def _success_html():
-    return """<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+    return f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Оплата успішна</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}.card{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}.icon{font-size:52px;margin-bottom:16px}h1{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}p{font-size:15px;color:#6b7280;margin-bottom:24px}a{display:inline-block;background:#0070ba;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}</style></head>
+<style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#0070ba;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
 <body><div class="card"><div class="icon">✅</div><h1>Оплату здійснено!</h1>
 <p>Повернись до бота — він вже надіслав тобі посилання на групу.</p>
-<a href="https://t.me/">Повернутися до бота →</a></div></body></html>"""
+<a href="https://t.me/{BOT_USERNAME}">Повернутися до бота →</a></div></body></html>"""
 
 
 def _error_html():
-    return """<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+    return f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Помилка</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}.card{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}.icon{font-size:52px;margin-bottom:16px}h1{font-size:22px;font-weight:700;color:#dc2626;margin-bottom:8px}p{font-size:15px;color:#6b7280;margin-bottom:24px}a{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}</style></head>
+<style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#dc2626;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
 <body><div class="card"><div class="icon">❌</div><h1>Помилка оплати</h1>
 <p>Щось пішло не так. Поверніться до бота і спробуйте ще раз.</p>
-<a href="https://t.me/">Повернутися до бота →</a></div></body></html>"""
+<a href="https://t.me/{BOT_USERNAME}">Повернутися до бота →</a></div></body></html>"""
 
 
 def _cancel_html():
-    return """<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+    return f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Скасовано</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}.card{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}.icon{font-size:52px;margin-bottom:16px}h1{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}p{font-size:15px;color:#6b7280;margin-bottom:24px}a{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}</style></head>
+<style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
 <body><div class="card"><div class="icon">↩️</div><h1>Оплату скасовано</h1>
 <p>Ви скасували оплату. Поверніться до бота щоб спробувати ще раз.</p>
-<a href="https://t.me/">Повернутися до бота →</a></div></body></html>"""
+<a href="https://t.me/{BOT_USERNAME}">Повернутися до бота →</a></div></body></html>"""
 
 
 def setup_webhook_server(bot: Bot) -> web.Application:
