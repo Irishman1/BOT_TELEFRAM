@@ -20,7 +20,7 @@ def render(name, page="", **ctx):
         content = f.read()
     for k, v in ctx.items():
         content = content.replace(f"{{{{{k}}}}}", str(v) if v is not None else "")
-    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast"]}
+    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments"]}
     html = base.replace("{{content}}", content)
     for k, v in nav.items():
         html = html.replace(f"{{{{{k}}}}}", v)
@@ -232,3 +232,49 @@ def setup_admin(app: web.Application):
     app.router.add_post("/admin/kick",       kick_post)
     app.router.add_get ("/admin/broadcast",  broadcast_get)
     app.router.add_post("/admin/broadcast",  broadcast_post)
+    app.router.add_get ("/admin/payments",   payments_page)
+
+
+@require_login
+async def payments_page(request):
+    rows = await db_fetch("""
+        SELECT p.*, u.username, u.full_name
+        FROM payments p
+        LEFT JOIN users u ON p.tg_id = u.tg_id
+        ORDER BY p.paid_at DESC
+        LIMIT 100
+    """)
+
+    total_all = (await db_one("SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE status='success'"))["s"]
+    total_month = (await db_one("SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE status='success' AND strftime('%Y-%m',paid_at)=strftime('%Y-%m','now')"))["s"]
+    count_all = (await db_one("SELECT COUNT(*) as c FROM payments WHERE status='success'"))["c"]
+
+    rows_html = ""
+    for p in rows:
+        status_badge = {
+            "success": '<span class="badge badge-active">Успішно</span>',
+            "sandbox": '<span class="badge" style="background:#e0f2fe;color:#0369a1;">Тест</span>',
+            "failure": '<span class="badge badge-expired">Помилка</span>',
+        }.get(p["status"], f'<span class="badge">{p["status"]}</span>')
+
+        paid_at = (p["paid_at"] or "")[:16].replace("T", " ")
+        name = p["full_name"] or "—"
+        un = f'@{p["username"]}' if p["username"] else str(p["tg_id"])
+        plan = PLANS.get(p["plan"], p["plan"] or "—")
+
+        rows_html += (
+            "<tr>"
+            f"<td>{paid_at}</td>"
+            f"<td><div style='font-weight:500'>{name}</div><div style='font-size:12px;color:#6b7280'>{un}</div></td>"
+            f"<td>{plan}</td>"
+            f"<td style='font-weight:600;color:#16a34a'>{int(p['amount'])} грн</td>"
+            f"<td>{status_badge}</td>"
+            "</tr>"
+        )
+
+    return render("payments.html", page="payments",
+        rows=rows_html,
+        total_all=int(total_all),
+        total_month=int(total_month),
+        count_all=count_all,
+    )

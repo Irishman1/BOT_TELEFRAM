@@ -1,0 +1,35 @@
+<div class="page-header"><h2>Платежі</h2><p>Історія всіх транзакцій</p></div>
+
+<div class="metric-grid" style="margin-bottom:24px;">
+  <div class="metric">
+    <div class="metric-label">Всього зібрано</div>
+    <div class="metric-value">{{total_all}} грн</div>
+    <span class="metric-badge badge-up">за весь час</span>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Цього місяця</div>
+    <div class="metric-value">{{total_month}} грн</div>
+    <span class="metric-badge badge-up">поточний місяць</span>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Всього платежів</div>
+    <div class="metric-value">{{count_all}}</div>
+    <span class="metric-badge badge-up">успішних</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Останні 100 платежів</h3></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Користувач</th>
+        <th>Тариф</th>
+        <th>Сума</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>{{rows}}</tbody>
+  </table>
+</div>

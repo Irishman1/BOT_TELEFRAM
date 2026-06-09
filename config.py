@@ -5,12 +5,10 @@ load_dotenv()
 
 # Telegram
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token_here")
-GROUP_ID = int(os.getenv("GROUP_ID", "-100xxxxxxxxx"))  # ID закритої групи (супергрупи)
+GROUP_ID = int(os.getenv("GROUP_ID", "-100xxxxxxxxx"))
 ADMIN_IDS = list(map(int, os.getenv("ADMIN_IDS", "123456789").split(",")))
 
-# LiqPay (залишаємо на майбутнє, коли зробиш платним)
-LIQPAY_PUBLIC_KEY = os.getenv("LIQPAY_PUBLIC_KEY", "")
-LIQPAY_PRIVATE_KEY = os.getenv("LIQPAY_PRIVATE_KEY", "")
+# Server
 SERVER_URL = os.getenv("SERVER_URL", "https://your-app.railway.app")
 WEBHOOK_PATH = "/webhook/liqpay"
 
@@ -18,11 +16,14 @@ WEBHOOK_PATH = "/webhook/liqpay"
 GROUP_NAME = "Назва вашої групи"
 GROUP_DESCRIPTION = "Опис — що отримає учасник"
 
-# Режим: True = безкоштовно (зараз), False = платно
-FREE_ACCESS = True
-
+# Тарифи
 PLANS = {
-    "1m": {"name": "1 місяць", "days": 30, "price": 199, "currency": "UAH"},
-    "3m": {"name": "3 місяці", "days": 90, "price": 499, "currency": "UAH"},
-    "1y": {"name": "1 рік",    "days": 365,"price": 1499,"currency": "UAH"},
+    "1m": {"name": "1 місяць",  "days": 30,  "price": 5,  "currency": "EUR"},
+    "3m": {"name": "3 місяці",  "days": 90,  "price": 13, "currency": "EUR"},
+    "6m": {"name": "6 місяців", "days": 180, "price": 25, "currency": "EUR"},
 }
+
+# PayPal
+PAYPAL_CLIENT_ID     = os.getenv("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
+PAYPAL_MODE          = os.getenv("PAYPAL_MODE", "sandbox")

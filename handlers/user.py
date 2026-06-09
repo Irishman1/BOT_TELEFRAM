@@ -6,13 +6,12 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 from config import GROUP_ID, GROUP_NAME, GROUP_DESCRIPTION, SERVER_URL, PLANS
-from database import upsert_user, get_user, save_invite_link, get_invite_link, activate_subscription
+from database import upsert_user, get_user, save_invite_link, get_invite_link, activate_subscription, save_pending_order
 
 router = Router()
 
 
-def make_payment_url(order_id: str, amount: int, plan_name: str, bot_username: str) -> str:
-    """Генеруємо посилання на фейкову сторінку оплати"""
+def make_payment_url(order_id: str, amount: float, plan_name: str, bot_username: str) -> str:
     params = urlencode({
         "order":  order_id,
         "amount": amount,
@@ -55,7 +54,7 @@ async def cmd_start(message: Message, bot: Bot):
         kb = InlineKeyboardBuilder()
         for key, plan in PLANS.items():
             kb.button(
-                text=f"💳 {plan['name']} — {plan['price']} грн",
+                text=f"💳 {plan['name']} — {plan['price']} €",
                 callback_data=f"buy:{key}"
             )
         kb.adjust(1)
@@ -76,7 +75,7 @@ async def show_plans(callback: CallbackQuery):
     kb = InlineKeyboardBuilder()
     for key, plan in PLANS.items():
         kb.button(
-            text=f"💳 {plan['name']} — {plan['price']} грн",
+            text=f"💳 {plan['name']} — {plan['price']} €",
             callback_data=f"buy:{key}"
         )
     kb.adjust(1)
@@ -88,7 +87,7 @@ async def show_plans(callback: CallbackQuery):
     await callback.answer()
 
 
-# ─── Вибір тарифу → посилання на сторінку оплати ────────────
+# ─── Вибір тарифу → PayPal ──────────────────────────────────
 
 @router.callback_query(lambda c: c.data.startswith("buy:"))
 async def choose_plan(callback: CallbackQuery, bot: Bot):
@@ -98,24 +97,36 @@ async def choose_plan(callback: CallbackQuery, bot: Bot):
 
     import time
     order_id = f"sub_{tg_id}_{plan_key}_{int(time.time())}"
-
-    # Зберігаємо order_id щоб потім активувати підписку
-    from database import save_pending_order
     await save_pending_order(order_id, tg_id, plan_key)
 
-    me = await bot.get_me()
-    pay_url = make_payment_url(order_id, plan["price"], plan["name"], me.username)
+    # Генеруємо PayPal посилання
+    from paypal import create_order
+    return_url = f"{SERVER_URL}/payment/success?order={order_id}"
+    cancel_url = f"{SERVER_URL}/payment/cancel?order={order_id}"
+
+    try:
+        result = await create_order(
+            amount=plan["price"],
+            currency="EUR",
+            order_id=order_id,
+            return_url=return_url,
+            cancel_url=cancel_url
+        )
+        pay_url = result["approve_url"]
+    except Exception as e:
+        await callback.answer(f"Помилка: {e}", show_alert=True)
+        return
 
     kb = InlineKeyboardBuilder()
-    kb.button(text=f"💳 Оплатити {plan['price']} грн", url=pay_url)
+    kb.button(text=f"💳 Оплатити {plan['price']} € через PayPal", url=pay_url)
     kb.button(text="⬅️ Назад", callback_data="show_plans")
     kb.adjust(1)
 
     await callback.message.edit_text(
-        f"📦 <b>{plan['name']}</b> — {plan['price']} грн\n\n"
-        f"Натисни кнопку нижче — відкриється сторінка оплати.\n"
+        f"📦 <b>{plan['name']}</b> — {plan['price']} €\n\n"
+        f"Натисни кнопку — відкриється сторінка PayPal.\n"
         f"Після оплати бот автоматично надішле посилання на групу.\n\n"
-        f"🔒 Захищено SSL",
+        f"🔒 Захищено PayPal",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -145,7 +156,7 @@ async def get_group_link(event, bot: Bot):
     if existing:
         link = existing
     else:
-        expires_at = datetime.now() + timedelta(hours=48)
+        expires_at = datetime.now() + timedelta(minutes=15)
         invite = await bot.create_chat_invite_link(
             chat_id=GROUP_ID, member_limit=1, expire_date=expires_at
         )
@@ -157,7 +168,8 @@ async def get_group_link(event, bot: Bot):
 
     await message.answer(
         f"🔗 <b>Твоє посилання:</b>\n\n{link}\n\n"
-        f"⚠️ Одноразове — тільки для тебе!",
+        f"⏱ <b>Діє лише 15 хвилин!</b>\n"
+        f"⚠️ Одноразове — тільки для тебе. Не передавай нікому.",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
