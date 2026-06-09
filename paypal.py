@@ -18,6 +18,8 @@ async def get_access_token() -> str:
             data="grant_type=client_credentials"
         )
         data = await r.json()
+        if "access_token" not in data:
+            raise Exception(f"PayPal auth error: {data.get('error')}: {data.get('error_description')}")
         return data["access_token"]
 
 
