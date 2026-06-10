@@ -52,17 +52,13 @@ async def cmd_start(message: Message, bot: Bot):
         )
     else:
         kb = InlineKeyboardBuilder()
-        for key, plan in PLANS.items():
-            kb.button(
-                text=f"💳 {plan['name']} — {plan['price']} €",
-                callback_data=f"buy:{key}"
-            )
+        kb.button(text="💳 Оплатити", callback_data="show_plans")
         kb.adjust(1)
         await message.answer(
             f"👋 Привіт, {name}!\n\n"
             f"🔐 <b>{GROUP_NAME}</b>\n"
             f"{GROUP_DESCRIPTION}\n\n"
-            f"Обери тариф:",
+            f"Натисни кнопку нижче, щоб оформити підписку:",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
