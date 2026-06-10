@@ -2,14 +2,16 @@ import os
 import aiosqlite
 from datetime import datetime, timedelta
 from aiohttp import web
+from database import get_all_promos, create_promo, toggle_promo, delete_promo, get_buy_clicks_count
 
 ADMIN_LOGIN    = os.getenv("ADMIN_LOGIN", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")
-DB_PATH        = "subscriptions.db"
+DB_PATH        = os.getenv("DB_PATH", "subscriptions.db")
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "")
 GROUP_ID       = os.getenv("GROUP_ID", "")
 
 PLANS = {"1m":"1 місяць","3m":"3 місяці","1y":"1 рік","manual":"Вручну"}
+PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 
@@ -20,7 +22,7 @@ def render(name, page="", **ctx):
         content = f.read()
     for k, v in ctx.items():
         content = content.replace(f"{{{{{k}}}}}", str(v) if v is not None else "")
-    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments"]}
+    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments","promo"]}
     html = base.replace("{{content}}", content)
     for k, v in nav.items():
         html = html.replace(f"{{{{{k}}}}}", v)
@@ -96,6 +98,10 @@ async def stats(request):
     colors = ['#534AB7','#1D9E75','#D85A30','#888']
     plans_html = "".join(f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{colors[i%4]};flex-shrink:0;"></span><span>{PLANS.get(r["plan"],r["plan"])} — <strong>{r["c"]}</strong> чол.</span></div>' for i,r in enumerate(plans))
 
+    clicks = await get_buy_clicks_count()
+    paid_count = (await db_one("SELECT COUNT(*) as c FROM payments WHERE status='success'"))["c"]
+    conversion = round(paid_count / clicks * 100, 1) if clicks else 0
+
     inactive = max(total - active, 0)
     status_labels = ["Активні", "Неактивні"]
     status_vals = [active, inactive]
@@ -116,7 +122,9 @@ async def stats(request):
         plans_html=plans_html,
         status_labels=status_labels,
         status_vals=status_vals,
-        status_html=status_html)
+        status_html=status_html,
+        clicks=clicks,
+        conversion=conversion)
 
 
 @require_login
@@ -125,8 +133,8 @@ async def users_page(request):
     q = request.rel_url.query.get("q","")
     if q:
         rows = await db_fetch(
-            "SELECT * FROM users WHERE username LIKE ? OR full_name LIKE ? ORDER BY expires_at DESC",
-            (f"%{q}%", f"%{q}%")
+            "SELECT * FROM users WHERE username LIKE ? OR full_name LIKE ? OR CAST(tg_id AS TEXT) LIKE ? ORDER BY expires_at DESC",
+            (f"%{q}%", f"%{q}%", f"%{q}%")
         )
     else:
         rows = await db_fetch("SELECT * FROM users ORDER BY is_active DESC,expires_at ASC")
@@ -229,6 +237,85 @@ async def broadcast_post(request):
     return render("broadcast.html", page="broadcast", result=f'<div class="alert alert-success">✅ Надіслано: <strong>{sent}</strong>, помилок: <strong>{failed}</strong></div>')
 
 
+@require_login
+async def export_users_csv(request):
+    import csv, io
+    rows = await db_fetch("SELECT * FROM users ORDER BY tg_id")
+    buf = io.StringIO()
+    if rows:
+        w = csv.DictWriter(buf, fieldnames=rows[0].keys())
+        w.writeheader()
+        w.writerows(rows)
+    return web.Response(text=buf.getvalue(), content_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=users.csv"})
+
+
+@require_login
+async def export_payments_csv(request):
+    import csv, io
+    rows = await db_fetch("""
+        SELECT p.*, u.username, u.full_name
+        FROM payments p LEFT JOIN users u ON p.tg_id = u.tg_id
+        ORDER BY p.paid_at DESC
+    """)
+    buf = io.StringIO()
+    if rows:
+        w = csv.DictWriter(buf, fieldnames=rows[0].keys())
+        w.writeheader()
+        w.writerows(rows)
+    return web.Response(text=buf.getvalue(), content_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=payments.csv"})
+
+
+# ─── Promo codes ─────────────────────────────────────────────
+
+@require_login
+async def promo_page(request):
+    promos = await get_all_promos()
+    rows_html = ""
+    for p in promos:
+        status = '<span class="badge badge-active">Активний</span>' if p["is_active"] else '<span class="badge badge-expired">Вимкнено</span>'
+        limit = p["max_uses"] if p["max_uses"] else "∞"
+        toggle_text = "Вимкнути" if p["is_active"] else "Увімкнути"
+        rows_html += (
+            "<tr>"
+            f"<td><strong>{p['code']}</strong></td>"
+            f"<td>{p['discount']}%</td>"
+            f"<td>{p['used_count']} / {limit}</td>"
+            f"<td>{status}</td>"
+            f"<td style='display:flex;gap:6px'>"
+            f"<a href='/admin/promo/toggle?code={p['code']}' class='btn-sm'>{toggle_text}</a>"
+            f"<a href='/admin/promo/delete?code={p['code']}' class='btn-sm danger'>Видалити</a>"
+            "</td></tr>"
+        )
+    return render("promo.html", page="promo", rows=rows_html, msg="")
+
+
+@require_login
+async def promo_create(request):
+    data = await request.post()
+    code = data.get("code","").strip().upper()
+    discount = int(data.get("discount", 0) or 0)
+    max_uses = int(data.get("max_uses", 0) or 0)
+    if code and 0 < discount <= 100:
+        await create_promo(code, discount, max_uses)
+    raise web.HTTPFound("/admin/promo")
+
+
+@require_login
+async def promo_toggle(request):
+    code = request.rel_url.query.get("code","")
+    await toggle_promo(code)
+    raise web.HTTPFound("/admin/promo")
+
+
+@require_login
+async def promo_delete(request):
+    code = request.rel_url.query.get("code","")
+    await delete_promo(code)
+    raise web.HTTPFound("/admin/promo")
+
+
 def setup_admin(app: web.Application):
     app.router.add_get ("/admin",            lambda r: web.HTTPFound("/admin/stats"))
     app.router.add_get ("/admin/",           lambda r: web.HTTPFound("/admin/stats"))
@@ -246,6 +333,13 @@ def setup_admin(app: web.Application):
     app.router.add_get ("/admin/broadcast",  broadcast_get)
     app.router.add_post("/admin/broadcast",  broadcast_post)
     app.router.add_get ("/admin/payments",   payments_page)
+    app.router.add_get ("/admin/receipt/{order_id}", receipt_page)
+    app.router.add_get ("/admin/export/users.csv",    export_users_csv)
+    app.router.add_get ("/admin/export/payments.csv", export_payments_csv)
+    app.router.add_get ("/admin/promo",        promo_page)
+    app.router.add_post("/admin/promo/create", promo_create)
+    app.router.add_get ("/admin/promo/toggle", promo_toggle)
+    app.router.add_get ("/admin/promo/delete", promo_delete)
 
 
 @require_login
@@ -274,20 +368,64 @@ async def payments_page(request):
         name = p["full_name"] or "—"
         un = f'@{p["username"]}' if p["username"] else str(p["tg_id"])
         plan = PLANS.get(p["plan"], p["plan"] or "—")
+        amount = p["amount"]
+        amount_str = f"{amount:.2f}".rstrip("0").rstrip(".") if amount is not None else "0"
+        promo = f' <span style="font-size:11px;color:#6b7280;">({p["promo_code"]})</span>' if p.get("promo_code") else ""
+        receipt = f'<a href="/admin/receipt/{p["order_id"]}" class="btn-sm">Чек</a>' if p["status"] == "success" else "—"
 
         rows_html += (
             "<tr>"
             f"<td>{paid_at}</td>"
             f"<td><div style='font-weight:500'>{name}</div><div style='font-size:12px;color:#6b7280'>{un}</div></td>"
-            f"<td>{plan}</td>"
-            f"<td style='font-weight:600;color:#16a34a'>{int(p['amount'])} грн</td>"
+            f"<td>{plan}{promo}</td>"
+            f"<td style='font-weight:600;color:#16a34a'>{amount_str} €</td>"
             f"<td>{status_badge}</td>"
+            f"<td>{receipt}</td>"
             "</tr>"
         )
 
     return render("payments.html", page="payments",
         rows=rows_html,
-        total_all=int(total_all),
-        total_month=int(total_month),
+        total_all=f"{total_all:.2f}".rstrip("0").rstrip("."),
+        total_month=f"{total_month:.2f}".rstrip("0").rstrip("."),
         count_all=count_all,
+    )
+
+
+@require_login
+async def receipt_page(request):
+    order_id = request.match_info["order_id"]
+    p = await db_one("""
+        SELECT p.*, u.username, u.full_name, u.tg_id as utg
+        FROM payments p LEFT JOIN users u ON p.tg_id = u.tg_id
+        WHERE p.order_id = ?
+    """, (order_id,))
+    if not p:
+        return web.Response(text="Платіж не знайдено", status=404)
+
+    paid_at = (p["paid_at"] or "")[:16].replace("T", " ")
+    name = p["full_name"] or "—"
+    un = f'@{p["username"]}' if p["username"] else "—"
+    plan = PLANS.get(p["plan"], p["plan"] or "—")
+    amount = p["amount"]
+    amount_str = f"{amount:.2f}".rstrip("0").rstrip(".") if amount is not None else "0"
+    paypal_oid = p.get("paypal_order_id") or "—"
+    promo = p.get("promo_code") or "—"
+    paypal_link = ""
+    if p.get("paypal_order_id"):
+        mode = "sandbox." if PAYPAL_MODE == "sandbox" else ""
+        paypal_link = f'<a href="https://www.{mode}paypal.com/activity/payment/{p["paypal_order_id"]}" target="_blank" class="btn-sm">Відкрити в PayPal →</a>'
+
+    return render("receipt.html", page="payments",
+        order_id=p["order_id"],
+        paid_at=paid_at,
+        name=name,
+        username=un,
+        tg_id=p["tg_id"],
+        plan=plan,
+        amount=amount_str,
+        status=p["status"],
+        paypal_order_id=paypal_oid,
+        promo_code=promo,
+        paypal_link=paypal_link,
     )

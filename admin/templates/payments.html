@@ -3,12 +3,12 @@
 <div class="metric-grid" style="margin-bottom:24px;">
   <div class="metric">
     <div class="metric-label">Всього зібрано</div>
-    <div class="metric-value">{{total_all}} грн</div>
+    <div class="metric-value">{{total_all}} €</div>
     <span class="metric-badge badge-up">за весь час</span>
   </div>
   <div class="metric">
     <div class="metric-label">Цього місяця</div>
-    <div class="metric-value">{{total_month}} грн</div>
+    <div class="metric-value">{{total_month}} €</div>
     <span class="metric-badge badge-up">поточний місяць</span>
   </div>
   <div class="metric">
@@ -19,7 +19,10 @@
 </div>
 
 <div class="card">
-  <div class="card-header"><h3>Останні 100 платежів</h3></div>
+  <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <h3>Останні 100 платежів</h3>
+    <a href="/admin/export/payments.csv" class="btn-sm">⬇ Експорт CSV</a>
+  </div>
   <table>
     <thead>
       <tr>
@@ -28,6 +31,7 @@
         <th>Тариф</th>
         <th>Сума</th>
         <th>Статус</th>
+        <th>Чек</th>
       </tr>
     </thead>
     <tbody>{{rows}}</tbody>

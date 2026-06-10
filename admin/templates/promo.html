@@ -1,0 +1,30 @@
+<div class="page-header"><h2>Промокоди</h2><p>Знижки для нових підписок</p></div>
+
+<div class="card" style="max-width:480px;margin-bottom:24px;">
+  <div class="card-header"><h3>Створити промокод</h3></div>
+  <div class="card-body">
+    <form method="post" action="/admin/promo/create" style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label>Код</label>
+        <input type="text" name="code" placeholder="SALE20" required style="width:100%;padding:8px;border:1px solid #e5e7ef;border-radius:8px;">
+      </div>
+      <div>
+        <label>Знижка, %</label>
+        <input type="number" name="discount" min="1" max="100" placeholder="20" required style="width:100%;padding:8px;border:1px solid #e5e7ef;border-radius:8px;">
+      </div>
+      <div>
+        <label>Ліміт використань (0 = без ліміту)</label>
+        <input type="number" name="max_uses" min="0" value="0" style="width:100%;padding:8px;border:1px solid #e5e7ef;border-radius:8px;">
+      </div>
+      <button type="submit" class="btn btn-primary">Створити</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Список промокодів</h3></div>
+  <table>
+    <thead><tr><th>Код</th><th>Знижка</th><th>Використано</th><th>Статус</th><th>Дії</th></tr></thead>
+    <tbody>{{rows}}</tbody>
+  </table>
+</div>
