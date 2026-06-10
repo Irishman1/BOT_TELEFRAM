@@ -46,6 +46,7 @@ async def cmd_start(message: Message, bot: Bot):
         kb = InlineKeyboardBuilder()
         kb.button(text="🔗 Перейти до групи", callback_data="get_link")
         kb.button(text="🔄 Продовжити підписку", callback_data="show_plans")
+        kb.button(text="💬 Підтримка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
             f"👋 Привіт, {name}!\n\n"
@@ -57,6 +58,7 @@ async def cmd_start(message: Message, bot: Bot):
     else:
         kb = InlineKeyboardBuilder()
         kb.button(text="💳 Оплатити", callback_data="show_plans")
+        kb.button(text="💬 Підтримка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
             f"👋 Привіт, {name}!\n\n"
@@ -91,7 +93,7 @@ async def show_plans(callback: CallbackQuery, state: FSMContext):
     kb.adjust(1)
 
     promo_line = f"\n🎟 Промокод <b>{promo_code}</b> застосовано (-{discount}%)\n" if promo_code else ""
-    await callback.message.edit_text(
+    await callback.message.answer(
         f"💳 <b>Тарифи — {GROUP_NAME}</b>\n{promo_line}\nОбери тариф:",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
@@ -200,6 +202,7 @@ async def cmd_status(message: Message):
         kb = InlineKeyboardBuilder()
         kb.button(text="🔗 Перейти до групи", callback_data="get_link")
         kb.button(text="🔄 Продовжити підписку", callback_data="show_plans")
+        kb.button(text="💬 Підтримка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
             f"📊 <b>Твоя підписка</b>\n\n"
@@ -212,6 +215,7 @@ async def cmd_status(message: Message):
     else:
         kb = InlineKeyboardBuilder()
         kb.button(text="💳 Оплатити", callback_data="show_plans")
+        kb.button(text="💬 Підтримка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
             "📊 <b>Твоя підписка</b>\n\n"
@@ -249,6 +253,15 @@ async def cmd_support(message: Message, state: FSMContext):
     await message.answer(
         "💬 Напиши своє повідомлення — адміністратор отримає його та відповість тобі особисто."
     )
+
+
+@router.callback_query(lambda c: c.data == "open_support")
+async def open_support(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(SupportState.waiting_message)
+    await callback.message.answer(
+        "💬 Напиши своє повідомлення — адміністратор отримає його та відповість тобі особисто."
+    )
+    await callback.answer()
 
 
 @router.message(StateFilter(SupportState.waiting_message))
