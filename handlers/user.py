@@ -193,6 +193,40 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
     await callback.answer()
 
 
+# ─── /status ─────────────────────────────────────────────────
+
+@router.message(Command("status"))
+async def cmd_status(message: Message):
+    tg_id = message.from_user.id
+    user = await get_user(tg_id)
+
+    if user and user["is_active"] and user["expires_at"]:
+        expires   = datetime.fromisoformat(user["expires_at"])
+        days_left = (expires - datetime.now()).days
+        kb = InlineKeyboardBuilder()
+        kb.button(text="🔗 Перейти до групи", callback_data="get_link")
+        kb.button(text="🔄 Продовжити підписку", callback_data="show_plans")
+        kb.adjust(1)
+        await message.answer(
+            f"📊 <b>Твоя підписка</b>\n\n"
+            f"✅ Активна\n"
+            f"📅 Діє до: <b>{expires.strftime('%d.%m.%Y')}</b>\n"
+            f"⏳ Залишилось: <b>{days_left} дн.</b>",
+            parse_mode="HTML",
+            reply_markup=kb.as_markup()
+        )
+    else:
+        kb = InlineKeyboardBuilder()
+        kb.button(text="💳 Оплатити", callback_data="show_plans")
+        kb.adjust(1)
+        await message.answer(
+            "📊 <b>Твоя підписка</b>\n\n"
+            "❌ Немає активної підписки",
+            parse_mode="HTML",
+            reply_markup=kb.as_markup()
+        )
+
+
 # ─── /getlink ────────────────────────────────────────────────
 
 @router.message(Command("getlink"))
@@ -244,6 +278,7 @@ async def cmd_help(message: Message):
     await message.answer(
         "ℹ️ <b>Допомога</b>\n\n"
         "/start — головне меню\n"
+        "/status — моя підписка\n"
         "/getlink — посилання на групу\n"
         "/help — довідка",
         parse_mode="HTML"
