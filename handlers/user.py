@@ -317,6 +317,18 @@ async def get_group_link(event, bot: Bot):
         await event.answer()
 
 
+# ─── /cancel ─────────────────────────────────────────────────
+
+@router.message(Command("cancel"))
+async def cmd_cancel(message: Message, state: FSMContext):
+    current = await state.get_state()
+    if current is None:
+        await message.answer("Немає чого скасовувати.")
+        return
+    await state.set_state(None)
+    await message.answer("❌ Скасовано. /start — головне меню")
+
+
 # ─── /help ───────────────────────────────────────────────────
 
 @router.message(Command("help"))
@@ -328,6 +340,7 @@ async def cmd_help(message: Message):
         "/history — історія платежів\n"
         "/getlink — посилання на групу\n"
         "/support — написати в підтримку\n"
+        "/cancel — скасувати поточну дію\n"
         "/help — довідка",
         parse_mode="HTML"
     )
