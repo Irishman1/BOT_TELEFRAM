@@ -90,6 +90,7 @@ async def show_plans(callback: CallbackQuery, state: FSMContext):
         kb.button(text=text, callback_data=f"buy:{key}")
     if not promo_code:
         kb.button(text="🎟 У мене є промокод", callback_data="enter_promo")
+    kb.button(text="💬 Підтримка", callback_data="open_support")
     kb.adjust(1)
 
     promo_line = f"\n🎟 Промокод <b>{promo_code}</b> застосовано (-{discount}%)\n" if promo_code else ""
@@ -106,8 +107,12 @@ async def show_plans(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(lambda c: c.data == "enter_promo")
 async def enter_promo(callback: CallbackQuery, state: FSMContext):
     await state.set_state(PromoState.waiting_code)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💬 Підтримка", callback_data="open_support")
+    kb.adjust(1)
     await callback.message.edit_text(
         "🎟 Введи промокод повідомленням:",
+        reply_markup=kb.as_markup()
     )
     await callback.answer()
 
@@ -127,6 +132,7 @@ async def process_promo(message: Message, state: FSMContext):
     for key, plan in PLANS.items():
         price = round(plan["price"] * (100 - promo["discount"]) / 100, 2)
         kb.button(text=f"💳 {plan['name']} — {price} € (було {plan['price']} €)", callback_data=f"buy:{key}")
+    kb.button(text="💬 Підтримка", callback_data="open_support")
     kb.adjust(1)
 
     await message.answer(
@@ -176,6 +182,7 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
     kb = InlineKeyboardBuilder()
     kb.button(text=f"💳 Оплатити {price} € через PayPal", url=pay_url)
     kb.button(text="⬅️ Назад", callback_data="show_plans")
+    kb.button(text="💬 Підтримка", callback_data="open_support")
     kb.adjust(1)
 
     await callback.message.edit_text(
@@ -318,6 +325,8 @@ async def get_group_link(event, bot: Bot):
 
     kb = InlineKeyboardBuilder()
     kb.button(text="👥 Перейти до групи", url=link)
+    kb.button(text="💬 Підтримка", callback_data="open_support")
+    kb.adjust(1)
 
     await message.answer(
         f"🔗 <b>Твоє посилання:</b>\n\n{link}\n\n"
