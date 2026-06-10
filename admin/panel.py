@@ -277,6 +277,25 @@ async def promo_page(request):
         status = '<span class="badge badge-active">Активний</span>' if p["is_active"] else '<span class="badge badge-expired">Вимкнено</span>'
         limit = p["max_uses"] if p["max_uses"] else "∞"
         toggle_text = "Вимкнути" if p["is_active"] else "Увімкнути"
+
+        users = await db_fetch("""
+            SELECT pay.paid_at, pay.amount, u.username, u.full_name, u.tg_id
+            FROM payments pay LEFT JOIN users u ON pay.tg_id = u.tg_id
+            WHERE pay.promo_code = ? AND pay.status='success'
+            ORDER BY pay.paid_at DESC
+        """, (p["code"],))
+
+        if users:
+            users_html = "".join(
+                f"<div style='display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f0f0f5;'>"
+                f"<span>{u['full_name'] or u['tg_id']} {('@'+u['username']) if u['username'] else ''}</span>"
+                f"<span style='color:#6b7280'>{(u['paid_at'] or '')[:16].replace('T',' ')} · {u['amount']:.2f} €</span>"
+                "</div>"
+                for u in users
+            )
+        else:
+            users_html = "<div style='font-size:13px;color:#6b7280;'>Ще ніхто не використав</div>"
+
         rows_html += (
             "<tr>"
             f"<td><strong>{p['code']}</strong></td>"
@@ -287,6 +306,7 @@ async def promo_page(request):
             f"<a href='/admin/promo/toggle?code={p['code']}' class='btn-sm'>{toggle_text}</a>"
             f"<a href='/admin/promo/delete?code={p['code']}' class='btn-sm danger'>Видалити</a>"
             "</td></tr>"
+            f"<tr><td colspan='5' style='background:#fafafe;padding:8px 12px;'>{users_html}</td></tr>"
         )
     return render("promo.html", page="promo", rows=rows_html, msg="")
 
