@@ -1,8 +1,9 @@
+import os
 import aiosqlite
 from datetime import datetime, timedelta
 from typing import Optional
 
-DB_PATH = "subscriptions.db"
+DB_PATH = os.getenv("DB_PATH", "subscriptions.db")
 
 
 async def init_db():
