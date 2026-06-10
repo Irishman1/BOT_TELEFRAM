@@ -95,6 +95,16 @@ async def stats(request):
     months = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру']
     colors = ['#534AB7','#1D9E75','#D85A30','#888']
     plans_html = "".join(f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{colors[i%4]};flex-shrink:0;"></span><span>{PLANS.get(r["plan"],r["plan"])} — <strong>{r["c"]}</strong> чол.</span></div>' for i,r in enumerate(plans))
+
+    inactive = max(total - active, 0)
+    status_labels = ["Активні", "Неактивні"]
+    status_vals = [active, inactive]
+    status_colors = ['#1D9E75', '#888']
+    status_html = "".join(
+        f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{c};flex-shrink:0;"></span><span>{l} — <strong>{v}</strong> чол.</span></div>'
+        for l, v, c in zip(status_labels, status_vals, status_colors)
+    )
+
     return render("stats.html", page="stats",
         active=active, total=total, monthly=int(monthly), expiring=expiring,
         sub_labels=[months[int(r['m'])-1] for r in subs],
@@ -103,7 +113,10 @@ async def stats(request):
         rev_vals=[r['s'] for r in revs],
         plan_labels=[PLANS.get(r['plan'],r['plan']) for r in plans],
         plan_vals=[r['c'] for r in plans],
-        plans_html=plans_html)
+        plans_html=plans_html,
+        status_labels=status_labels,
+        status_vals=status_vals,
+        status_html=status_html)
 
 
 @require_login
