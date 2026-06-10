@@ -1,4 +1,7 @@
-<div class="page-header"><h2>Статистика</h2><p>Загальна картина підписок і доходів</p></div>
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+  <div><h2>Статистика</h2><p>Загальна картина підписок і доходів</p></div>
+  <a href="/admin/backup" class="btn-sm">⬇ Завантажити бекап БД</a>
+</div>
 <div class="metric-grid">
   <div class="metric"><div class="metric-label">Активних підписок</div><div class="metric-value">{{active}}</div><span class="metric-badge badge-up">зараз</span></div>
   <div class="metric"><div class="metric-label">Всього користувачів</div><div class="metric-value">{{total}}</div><span class="metric-badge badge-up">за весь час</span></div>
@@ -22,10 +25,18 @@
   <div style="display:flex;flex-direction:column;gap:10px;">{{status_html}}</div>
 </div></div>
 </div>
+<div class="card">
+  <div class="card-header"><h3>Втрачені оплати (відкрив тарифи → не оплатив)</h3></div>
+  <div class="card-body"><div style="position:relative;height:220px;"><canvas id="cFunnel" role="img" aria-label="Воронка оплат"></canvas></div></div>
+</div>
 <script>
 const gc={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
 new Chart(document.getElementById('cSubs'),{type:'bar',data:{labels:{{sub_labels}},datasets:[{data:{{sub_vals}},backgroundColor:'#534AB7',borderRadius:4}]},options:{...gc,scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}});
 new Chart(document.getElementById('cRev'),{type:'line',data:{labels:{{rev_labels}},datasets:[{data:{{rev_vals}},borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',fill:true,tension:0.4,pointRadius:4,pointBackgroundColor:'#1D9E75'}]},options:{...gc,scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
 new Chart(document.getElementById('cPlans'),{type:'doughnut',data:{labels:{{plan_labels}},datasets:[{data:{{plan_vals}},backgroundColor:['#534AB7','#1D9E75','#D85A30','#888'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}});
 new Chart(document.getElementById('cStatus'),{type:'doughnut',data:{labels:{{status_labels}},datasets:[{data:{{status_vals}},backgroundColor:['#1D9E75','#888'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}});
+new Chart(document.getElementById('cFunnel'),{type:'bar',data:{labels:{{funnel_labels}},datasets:[
+  {label:'Відкрили тарифи',data:{{funnel_clicks}},backgroundColor:'#888',borderRadius:4},
+  {label:'Оплатили',data:{{funnel_payments}},backgroundColor:'#1D9E75',borderRadius:4}
+]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}});
 </script>

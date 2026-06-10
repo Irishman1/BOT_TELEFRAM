@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from aiohttp import web
 from aiogram import Bot
 from datetime import datetime, timedelta
@@ -13,12 +12,6 @@ from database import (
 )
 
 logger = logging.getLogger(__name__)
-STATIC_DIR = Path(__file__).parent.parent / "static"
-
-
-async def serve_pay_page(request: web.Request) -> web.Response:
-    html = (STATIC_DIR / "pay.html").read_text(encoding="utf-8")
-    return web.Response(text=html, content_type="text/html")
 
 
 async def _finalize_order(bot: Bot, order: dict, paypal_token: str) -> bool:
@@ -213,7 +206,6 @@ def _cancel_html():
 def setup_webhook_server(bot: Bot) -> web.Application:
     app = web.Application()
     app["bot"] = bot
-    app.router.add_get("/pay",               serve_pay_page)
     app.router.add_get("/payment/success",   paypal_success)
     app.router.add_get("/payment/cancel",    paypal_cancel)
     app.router.add_post("/payment/webhook",  paypal_webhook)

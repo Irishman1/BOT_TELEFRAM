@@ -1,12 +1,23 @@
-<div class="page-header"><h2>Розсилка</h2><p>Надіслати повідомлення всім активним підписникам</p></div>
+<div class="page-header"><h2>Розсилка</h2><p>Надіслати повідомлення підписникам</p></div>
 <div class="card card-body" style="max-width:560px;">
   {{result}}
   <form method="POST">
+    <div class="form-group">
+      <label>Кому надіслати</label>
+      <select name="target" id="bc-target" onchange="document.getElementById('bc-days-wrap').style.display=this.value==='expiring'?'block':'none'">
+        <option value="all">Всім активним підписникам</option>
+        <option value="expiring">Тим, у кого підписка скоро закінчується</option>
+      </select>
+    </div>
+    <div class="form-group" id="bc-days-wrap" style="display:none;">
+      <label>Закінчується протягом (днів)</label>
+      <input type="number" name="days" value="3" min="1" max="30">
+    </div>
     <div class="form-group">
       <label>Текст повідомлення</label>
       <textarea name="text" placeholder="Введіть текст...&#10;&#10;Підтримується HTML: &lt;b&gt; &lt;i&gt; &lt;a href=&quot;...&quot;&gt;" required></textarea>
       <div style="font-size:12px;color:#6b7280;margin-top:6px;">Підтримується: &lt;b&gt; &lt;i&gt; &lt;a href="..."&gt;</div>
     </div>
-    <button class="btn btn-primary" type="submit">Надіслати всім підписникам</button>
+    <button class="btn btn-primary" type="submit">Надіслати</button>
   </form>
 </div>

@@ -2,7 +2,11 @@ import os
 import aiosqlite
 from datetime import datetime, timedelta
 from aiohttp import web
-from database import get_all_promos, create_promo, toggle_promo, delete_promo, get_buy_clicks_count
+from database import (
+    get_all_promos, create_promo, toggle_promo, delete_promo, get_buy_clicks_count,
+    get_clicks_and_payments_by_month, get_unread_support_count, get_support_messages,
+    mark_support_read, mark_all_support_read,
+)
 
 ADMIN_LOGIN    = os.getenv("ADMIN_LOGIN", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin")
@@ -15,17 +19,22 @@ PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 
-def render(name, page="", **ctx):
+async def render(name, page="", **ctx):
     with open(os.path.join(TMPL_DIR, "base.html"), encoding="utf-8") as f:
         base = f.read()
     with open(os.path.join(TMPL_DIR, name), encoding="utf-8") as f:
         content = f.read()
     for k, v in ctx.items():
         content = content.replace(f"{{{{{k}}}}}", str(v) if v is not None else "")
-    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments","promo"]}
+    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments","promo","support"]}
     html = base.replace("{{content}}", content)
     for k, v in nav.items():
         html = html.replace(f"{{{{{k}}}}}", v)
+
+    unread = await get_unread_support_count()
+    badge = f'<span class="support-badge">{unread}</span>' if unread else ""
+    html = html.replace("{{support_badge}}", badge)
+
     return web.Response(text=html, content_type="text/html")
 
 
@@ -102,6 +111,12 @@ async def stats(request):
     paid_count = (await db_one("SELECT COUNT(*) as c FROM payments WHERE status='success'"))["c"]
     conversion = round(paid_count / clicks * 100, 1) if clicks else 0
 
+    cp = await get_clicks_and_payments_by_month()
+    funnel_months = sorted(set(cp["clicks"]) | set(cp["payments"]))
+    funnel_labels = [months[int(m)-1] for m in funnel_months]
+    funnel_clicks = [cp["clicks"].get(m, 0) for m in funnel_months]
+    funnel_payments = [cp["payments"].get(m, 0) for m in funnel_months]
+
     inactive = max(total - active, 0)
     status_labels = ["Активні", "Неактивні"]
     status_vals = [active, inactive]
@@ -111,7 +126,7 @@ async def stats(request):
         for l, v, c in zip(status_labels, status_vals, status_colors)
     )
 
-    return render("stats.html", page="stats",
+    return await render("stats.html", page="stats",
         active=active, total=total, monthly=int(monthly), expiring=expiring,
         sub_labels=[months[int(r['m'])-1] for r in subs],
         sub_vals=[r['c'] for r in subs],
@@ -124,10 +139,12 @@ async def stats(request):
         status_vals=status_vals,
         status_html=status_html,
         clicks=clicks,
-        conversion=conversion)
+        conversion=conversion,
+        funnel_labels=funnel_labels,
+        funnel_clicks=funnel_clicks,
+        funnel_payments=funnel_payments)
 
 
-@require_login
 @require_login
 async def users_page(request):
     q = request.rel_url.query.get("q","")
@@ -156,12 +173,12 @@ async def users_page(request):
             f"<a href='/admin/kick?u={un}' class='btn-sm danger'>Кік</a>"
             "</td></tr>"
         )
-    return render("users.html", page="users", rows=rows_html, count=len(rows), search=q)
+    return await render("users.html", page="users", rows=rows_html, count=len(rows), search=q)
 
 
 @require_login
 async def find_get(request):
-    return render("find.html", page="find", result="")
+    return await render("find.html", page="find", result="")
 
 @require_login
 async def find_post(request):
@@ -169,16 +186,16 @@ async def find_post(request):
     q = data.get("q","").lstrip("@")
     u = await db_one("SELECT * FROM users WHERE username=? OR tg_id=?",(q,q))
     if not u:
-        return render("find.html", page="find", result='<div class="alert alert-danger">Користувача не знайдено</div>')
+        return await render("find.html", page="find", result='<div class="alert alert-danger">Користувача не знайдено</div>')
     s = '<span class="badge badge-active">Активний</span>' if u["is_active"] else '<span class="badge badge-expired">Неактивний</span>'
     exp = (u["expires_at"] or "")[:10] or "—"
     result = f'<div class="user-card" style="margin-top:20px;border-top:1px solid #e5e7ef;padding-top:20px;"><div class="user-card-name">{u["full_name"] or u["username"]} {s}</div><div class="user-meta"><div class="user-meta-item"><label>Username</label><p>@{u["username"] or "—"}</p></div><div class="user-meta-item"><label>Telegram ID</label><p>{u["tg_id"]}</p></div><div class="user-meta-item"><label>Тариф</label><p>{PLANS.get(u["plan"],u["plan"] or "—")}</p></div><div class="user-meta-item"><label>До</label><p>{exp}</p></div></div><div style="display:flex;gap:8px;margin-top:16px;"><a href="/admin/give?u={u["username"]}" class="btn btn-primary" style="font-size:13px;padding:7px 14px;">Продовжити</a><a href="/admin/kick?u={u["username"]}" class="btn btn-danger" style="font-size:13px;padding:7px 14px;">Видалити</a></div></div>'
-    return render("find.html", page="find", result=result)
+    return await render("find.html", page="find", result=result)
 
 
 @require_login
 async def give_get(request):
-    return render("give.html", page="give", msg="", prefill=request.rel_url.query.get("u",""))
+    return await render("give.html", page="give", msg="", prefill=request.rel_url.query.get("u",""))
 
 @require_login
 async def give_post(request):
@@ -187,7 +204,7 @@ async def give_post(request):
     days = int(data.get("days",30))
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
     if not u:
-        return render("give.html", page="give", msg='<div class="alert alert-danger">Користувача не знайдено</div>', prefill=username)
+        return await render("give.html", page="give", msg='<div class="alert alert-danger">Користувача не знайдено</div>', prefill=username)
     now = datetime.now()
     exp = u.get("expires_at")
     cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
@@ -195,12 +212,12 @@ async def give_post(request):
     await db_exec("UPDATE users SET expires_at=?,plan='manual',is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),now.isoformat(),username))
     try: await send_tg(u["tg_id"],f"🎁 Адміністратор надав доступ на <b>{days} днів</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>\n\n/getlink")
     except: pass
-    return render("give.html", page="give", msg=f'<div class="alert alert-success">✅ @{username} отримав доступ на {days} днів до {new_exp.strftime("%d.%m.%Y")}</div>', prefill="")
+    return await render("give.html", page="give", msg=f'<div class="alert alert-success">✅ @{username} отримав доступ на {days} днів до {new_exp.strftime("%d.%m.%Y")}</div>', prefill="")
 
 
 @require_login
 async def kick_get(request):
-    return render("kick.html", page="kick", msg="", prefill=request.rel_url.query.get("u",""))
+    return await render("kick.html", page="kick", msg="", prefill=request.rel_url.query.get("u",""))
 
 @require_login
 async def kick_post(request):
@@ -208,7 +225,7 @@ async def kick_post(request):
     username = data.get("username","").lstrip("@")
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
     if not u:
-        return render("kick.html", page="kick", msg='<div class="alert alert-danger">Користувача не знайдено</div>', prefill=username)
+        return await render("kick.html", page="kick", msg='<div class="alert alert-danger">Користувача не знайдено</div>', prefill=username)
     await db_exec("UPDATE users SET is_active=0 WHERE username=?",(username,))
     import aiohttp as _h
     async with _h.ClientSession() as s:
@@ -216,25 +233,84 @@ async def kick_post(request):
         await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/unbanChatMember",json={"chat_id":GROUP_ID,"user_id":u["tg_id"]})
     try: await send_tg(u["tg_id"],"❌ Твій доступ скасовано адміністратором.")
     except: pass
-    return render("kick.html", page="kick", msg=f'<div class="alert alert-success">✅ @{username} видалено з групи</div>', prefill="")
+    return await render("kick.html", page="kick", msg=f'<div class="alert alert-success">✅ @{username} видалено з групи</div>', prefill="")
 
 
 @require_login
 async def broadcast_get(request):
-    return render("broadcast.html", page="broadcast", result="")
+    return await render("broadcast.html", page="broadcast", result="")
 
 @require_login
 async def broadcast_post(request):
     data = await request.post()
     text = data.get("text","")
+    target = data.get("target", "all")
     if not text:
-        return render("broadcast.html", page="broadcast", result="")
-    users = await db_fetch("SELECT tg_id FROM users WHERE is_active=1")
+        return await render("broadcast.html", page="broadcast", result="")
+    if target == "expiring":
+        days = data.get("days","3")
+        try:
+            days = int(days)
+        except ValueError:
+            days = 3
+        users = await db_fetch(
+            f"SELECT tg_id FROM users WHERE is_active=1 AND expires_at IS NOT NULL AND DATE(expires_at) <= DATE('now', '+{days} days')"
+        )
+    else:
+        users = await db_fetch("SELECT tg_id FROM users WHERE is_active=1")
     sent = failed = 0
     for u in users:
         try: await send_tg(u["tg_id"],text); sent+=1
         except: failed+=1
-    return render("broadcast.html", page="broadcast", result=f'<div class="alert alert-success">✅ Надіслано: <strong>{sent}</strong>, помилок: <strong>{failed}</strong></div>')
+    return await render("broadcast.html", page="broadcast", result=f'<div class="alert alert-success">✅ Надіслано: <strong>{sent}</strong>, помилок: <strong>{failed}</strong></div>')
+
+
+# ─── Support messages ────────────────────────────────────────
+
+@require_login
+async def support_page(request):
+    messages = await get_support_messages()
+    rows_html = ""
+    for m in messages:
+        un = f"@{m['username']}" if m.get("username") else (m.get("full_name") or "")
+        date = (m["created_at"] or "")[:16].replace("T", " ")
+        read_cls = "" if m["is_read"] else 'style="font-weight:600;background:#f0effe;"'
+        status = '<span class="badge badge-active">Прочитано</span>' if m["is_read"] else '<span class="badge badge-expired">Нове</span>'
+        action = "" if m["is_read"] else f'<a href="/admin/support/read?id={m["id"]}" class="btn-sm">Позначити прочитаним</a>'
+        rows_html += f"""<tr {read_cls}>
+            <td>{date}</td>
+            <td>{un}<br><span style="color:var(--muted);font-size:12px;">{m['tg_id']}</span></td>
+            <td>{m['text']}</td>
+            <td>{status}</td>
+            <td>{action}</td>
+        </tr>"""
+    if not rows_html:
+        rows_html = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Повідомлень немає</td></tr>'
+    return await render("support.html", page="support", rows=rows_html)
+
+
+@require_login
+async def support_mark_read(request):
+    msg_id = request.rel_url.query.get("id")
+    if msg_id:
+        await mark_support_read(int(msg_id))
+    raise web.HTTPFound("/admin/support")
+
+
+@require_login
+async def support_mark_all_read(request):
+    await mark_all_support_read()
+    raise web.HTTPFound("/admin/support")
+
+
+# ─── DB backup ───────────────────────────────────────────────
+
+@require_login
+async def backup_db(request):
+    return web.FileResponse(
+        path=DB_PATH,
+        headers={"Content-Disposition": "attachment; filename=backup.db"},
+    )
 
 
 @require_login
@@ -308,7 +384,7 @@ async def promo_page(request):
             "</td></tr>"
             f"<tr><td colspan='5' style='background:#fafafe;padding:8px 12px;'>{users_html}</td></tr>"
         )
-    return render("promo.html", page="promo", rows=rows_html, msg="")
+    return await render("promo.html", page="promo", rows=rows_html, msg="")
 
 
 @require_login
@@ -360,6 +436,10 @@ def setup_admin(app: web.Application):
     app.router.add_post("/admin/promo/create", promo_create)
     app.router.add_get ("/admin/promo/toggle", promo_toggle)
     app.router.add_get ("/admin/promo/delete", promo_delete)
+    app.router.add_get ("/admin/support",       support_page)
+    app.router.add_get ("/admin/support/read",  support_mark_read)
+    app.router.add_get ("/admin/support/read_all", support_mark_all_read)
+    app.router.add_get ("/admin/backup",        backup_db)
 
 
 @require_login
@@ -404,7 +484,7 @@ async def payments_page(request):
             "</tr>"
         )
 
-    return render("payments.html", page="payments",
+    return await render("payments.html", page="payments",
         rows=rows_html,
         total_all=f"{total_all:.2f}".rstrip("0").rstrip("."),
         total_month=f"{total_month:.2f}".rstrip("0").rstrip("."),
@@ -436,7 +516,7 @@ async def receipt_page(request):
         mode = "sandbox." if PAYPAL_MODE == "sandbox" else ""
         paypal_link = f'<a href="https://www.{mode}paypal.com/activity/payment/{p["paypal_order_id"]}" target="_blank" class="btn-sm">Відкрити в PayPal →</a>'
 
-    return render("receipt.html", page="payments",
+    return await render("receipt.html", page="payments",
         order_id=p["order_id"],
         paid_at=paid_at,
         name=name,

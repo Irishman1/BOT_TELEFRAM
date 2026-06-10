@@ -69,6 +69,7 @@ textarea{resize:vertical;min-height:120px}
 .user-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}
 .user-meta-item label{font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
 .user-meta-item p{font-weight:500}
+.support-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--danger);color:#fff;font-size:11px;font-weight:600;margin-left:6px}
 </style>
 </head>
 <body>
@@ -83,6 +84,7 @@ textarea{resize:vertical;min-height:120px}
     <a href="/admin/payments"  class="{{nav_payments}}">💰 Платежі</a>
     <a href="/admin/broadcast" class="{{nav_broadcast}}">📢 Розсилка</a>
     <a href="/admin/promo"     class="{{nav_promo}}">🎟 Промокоди</a>
+    <a href="/admin/support"   class="{{nav_support}}">💬 Підтримка{{support_badge}}</a>
   </nav>
   <div class="sidebar-footer"><a href="/admin/logout">← Вийти</a></div>
 </aside>

@@ -85,6 +85,16 @@ async def init_db():
                 created_at DATETIME
             )
         """)
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS support_messages (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                tg_id      INTEGER,
+                text       TEXT,
+                created_at DATETIME,
+                is_read    INTEGER DEFAULT 0
+            )
+        """)
         await db.commit()
 
 
@@ -370,3 +380,70 @@ async def get_buy_clicks_count() -> int:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT COUNT(*) FROM buy_clicks") as cur:
             return (await cur.fetchone())[0]
+
+
+async def get_clicks_and_payments_by_month() -> dict:
+    """Повертає {місяць: {'clicks': N, 'payments': N}} для графіка втрачених оплат"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT strftime('%m',created_at) as m, COUNT(*) as c FROM buy_clicks GROUP BY m ORDER BY m"
+        ) as cur:
+            clicks = {r["m"]: r["c"] for r in await cur.fetchall()}
+        async with db.execute(
+            "SELECT strftime('%m',paid_at) as m, COUNT(*) as c FROM payments WHERE status='success' GROUP BY m ORDER BY m"
+        ) as cur:
+            payments = {r["m"]: r["c"] for r in await cur.fetchall()}
+    return {"clicks": clicks, "payments": payments}
+
+
+# ─── Payment history (для юзера) ─────────────────────────────
+
+async def get_user_payments(tg_id: int, limit: int = 10) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM payments WHERE tg_id = ? AND status='success' ORDER BY paid_at DESC LIMIT ?",
+            (tg_id, limit)
+        ) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+
+# ─── Support messages ────────────────────────────────────────
+
+async def save_support_message(tg_id: int, text: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO support_messages (tg_id, text, created_at, is_read) VALUES (?, ?, ?, 0)",
+            (tg_id, text, datetime.now().isoformat())
+        )
+        await db.commit()
+
+
+async def get_unread_support_count() -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT COUNT(*) FROM support_messages WHERE is_read=0") as cur:
+            return (await cur.fetchone())[0]
+
+
+async def get_support_messages() -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT s.*, u.username, u.full_name
+            FROM support_messages s LEFT JOIN users u ON s.tg_id = u.tg_id
+            ORDER BY s.created_at DESC
+        """) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+
+async def mark_support_read(msg_id: int):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE support_messages SET is_read=1 WHERE id=?", (msg_id,))
+        await db.commit()
+
+
+async def mark_all_support_read():
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE support_messages SET is_read=1 WHERE is_read=0")
+        await db.commit()

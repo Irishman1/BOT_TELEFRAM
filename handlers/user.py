@@ -5,14 +5,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
-
 from config import GROUP_ID, GROUP_NAME, GROUP_DESCRIPTION, SERVER_URL, PLANS
 from database import (
     upsert_user, get_user, save_invite_link, get_invite_link,
     activate_subscription, save_pending_order, get_promo, log_buy_click,
-    set_pending_order_paypal_id,
+    set_pending_order_paypal_id, get_user_payments, save_support_message,
 )
+from config import ADMIN_IDS
 
 router = Router()
 
@@ -21,15 +20,10 @@ class PromoState(StatesGroup):
     waiting_code = State()
 
 
-def make_payment_url(order_id: str, amount: float, plan_name: str, bot_username: str) -> str:
-    params = urlencode({
-        "order":  order_id,
-        "amount": amount,
-        "plan":   plan_name,
-        "name":   GROUP_NAME,
-        "bot":    f"https://t.me/{bot_username}",
-    })
-    return f"{SERVER_URL}/pay?{params}"
+class SupportState(StatesGroup):
+    waiting_message = State()
+
+
 
 
 # ─── /start ─────────────────────────────────────────────────
@@ -227,6 +221,58 @@ async def cmd_status(message: Message):
         )
 
 
+# ─── /history ───────────────────────────────────────────────
+
+@router.message(Command("history"))
+async def cmd_history(message: Message):
+    payments = await get_user_payments(message.from_user.id)
+    if not payments:
+        await message.answer("📜 Історія платежів порожня.")
+        return
+
+    lines = ["📜 <b>Історія платежів</b>\n"]
+    for p in payments:
+        date = (p["paid_at"] or "")[:10]
+        plan = PLANS.get(p["plan"])
+        plan_name = plan["name"] if plan else p["plan"]
+        promo = f" (промокод {p['promo_code']})" if p.get("promo_code") else ""
+        lines.append(f"📅 {date} — {plan_name} — <b>{p['amount']:.2f} €</b>{promo}")
+
+    await message.answer("\n".join(lines), parse_mode="HTML")
+
+
+# ─── /support ───────────────────────────────────────────────
+
+@router.message(Command("support"))
+async def cmd_support(message: Message, state: FSMContext):
+    await state.set_state(SupportState.waiting_message)
+    await message.answer(
+        "💬 Напиши своє повідомлення — адміністратор отримає його та відповість тобі особисто."
+    )
+
+
+@router.message(StateFilter(SupportState.waiting_message))
+async def process_support_message(message: Message, state: FSMContext, bot: Bot):
+    await save_support_message(message.from_user.id, message.text or "")
+    await state.set_state(None)
+    await message.answer("✅ Повідомлення надіслано адміністратору. Дякуємо!")
+
+    name = message.from_user.full_name
+    un = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(
+                admin_id,
+                f"💬 <b>Нове повідомлення підтримки</b>\n\n"
+                f"Від: {name} ({un})\n"
+                f"ID: {message.from_user.id}\n\n"
+                f"{message.text}",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+
+
 # ─── /getlink ────────────────────────────────────────────────
 
 @router.message(Command("getlink"))
@@ -279,7 +325,9 @@ async def cmd_help(message: Message):
         "ℹ️ <b>Допомога</b>\n\n"
         "/start — головне меню\n"
         "/status — моя підписка\n"
+        "/history — історія платежів\n"
         "/getlink — посилання на групу\n"
+        "/support — написати в підтримку\n"
         "/help — довідка",
         parse_mode="HTML"
     )
