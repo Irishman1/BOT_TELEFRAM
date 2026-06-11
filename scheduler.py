@@ -1,12 +1,14 @@
 import logging
 from aiogram import Bot
+from aiogram.types import FSInputFile
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 
-from config import GROUP_ID
+from config import GROUP_ID, ADMIN_IDS
 from database import (
     get_expiring_users, mark_notified,
-    get_expired_users, deactivate_user
+    get_expired_users, deactivate_user,
+    get_stats, get_buy_clicks_count, DB_PATH,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,6 +67,33 @@ async def kick_expired_users(bot: Bot):
             logger.warning(f"Failed to kick {tg_id}: {e}")
 
 
+async def daily_backup(bot: Bot):
+    """Щоденно надсилаємо адмінам бекап БД та статистику"""
+    stats = await get_stats()
+    buy_clicks = await get_buy_clicks_count()
+
+    text = (
+        f"🗄 <b>Щоденний бекап</b> — {datetime.now().strftime('%d.%m.%Y')}\n\n"
+        f"📊 <b>Статистика</b>\n"
+        f"👥 Активних підписок: <b>{stats['active']}</b>\n"
+        f"👤 Всього користувачів: <b>{stats['total']}</b>\n"
+        f"💰 Дохід за місяць: <b>{stats['monthly_revenue']:.2f} €</b>\n"
+        f"⏳ Закінчується протягом 3 днів: <b>{stats['expiring_soon']}</b>\n"
+        f"🖱 Кліків по \"Оплатити\": <b>{buy_clicks}</b>"
+    )
+
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_document(
+                admin_id,
+                FSInputFile(DB_PATH),
+                caption=text,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send daily backup to {admin_id}: {e}")
+
+
 async def start_scheduler(bot: Bot):
     """Запускаем все задачи планировщика"""
 
@@ -87,6 +116,13 @@ async def start_scheduler(bot: Bot):
         notify_expiring, "cron", hour=10, minute=0,
         kwargs={"bot": bot, "days": 1},
         id="notify_1d"
+    )
+
+    # Щоденний бекап БД + статистика — о 4:00
+    scheduler.add_job(
+        daily_backup, "cron", hour=4, minute=0,
+        kwargs={"bot": bot},
+        id="daily_backup"
     )
 
     scheduler.start()
