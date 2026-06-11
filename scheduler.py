@@ -88,7 +88,8 @@ async def daily_backup(bot: Bot):
                 admin_id,
                 FSInputFile(DB_PATH),
                 caption=text,
-                parse_mode="HTML"
+                parse_mode="HTML",
+                disable_notification=True
             )
         except Exception as e:
             logger.warning(f"Failed to send daily backup to {admin_id}: {e}")
@@ -118,9 +119,9 @@ async def start_scheduler(bot: Bot):
         id="notify_1d"
     )
 
-    # Щоденний бекап БД + статистика — о 4:00
+    # Щоденний бекап БД + статистика — о 8:00 за Чорногорією (9:00 Київ)
     scheduler.add_job(
-        daily_backup, "cron", hour=4, minute=0,
+        daily_backup, "cron", hour=9, minute=0,
         kwargs={"bot": bot},
         id="daily_backup"
     )
