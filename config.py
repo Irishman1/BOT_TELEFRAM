@@ -18,15 +18,23 @@ GROUP_DESCRIPTION = "Опис — що отримає учасник"
 
 # Тарифи
 PLANS = {
-    "1m": {"name": "1 місяць",  "days": 30,  "price": 5,  "currency": "EUR"},
-    "3m": {"name": "3 місяці",  "days": 90,  "price": 13, "currency": "EUR"},
-    "6m": {"name": "6 місяців", "days": 180, "price": 25, "currency": "EUR"},
+    "1m": {"name": "1 місяць",  "days": 30,  "price": 5,  "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
+    "3m": {"name": "3 місяці",  "days": 90,  "price": 13, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
+    "6m": {"name": "6 місяців", "days": 180, "price": 25, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_6M", "")},
 }
 
 # PayPal
 PAYPAL_CLIENT_ID     = os.getenv("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_MODE          = os.getenv("PAYPAL_MODE", "sandbox")
+
+# Lemon Squeezy
+LEMONSQUEEZY_API_KEY        = os.getenv("LEMONSQUEEZY_API_KEY", "")
+LEMONSQUEEZY_STORE_ID       = os.getenv("LEMONSQUEEZY_STORE_ID", "")
+LEMONSQUEEZY_WEBHOOK_SECRET = os.getenv("LEMONSQUEEZY_WEBHOOK_SECRET", "")
+
+# Платіжний провайдер: "paypal" або "lemonsqueezy"
+PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "paypal")
 
 # Bot
 BOT_USERNAME = os.getenv("BOT_USERNAME", "")

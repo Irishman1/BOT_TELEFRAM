@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
-from config import GROUP_ID, GROUP_NAME, GROUP_DESCRIPTION, SERVER_URL, PLANS
+from config import GROUP_ID, GROUP_NAME, GROUP_DESCRIPTION, SERVER_URL, PLANS, PAYMENT_PROVIDER
 from database import (
     upsert_user, get_user, save_invite_link, get_invite_link,
     activate_subscription, save_pending_order, get_promo, log_buy_click,
@@ -159,37 +159,58 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
     order_id = f"sub_{tg_id}_{plan_key}_{int(time.time())}"
     await save_pending_order(order_id, tg_id, plan_key, promo_code)
 
-    # Генеруємо PayPal посилання
-    from paypal import create_order
     return_url = f"{SERVER_URL}/payment/success?order={order_id}"
-    cancel_url = f"{SERVER_URL}/payment/cancel?order={order_id}"
 
-    try:
-        result = await create_order(
-            amount=price,
-            currency="EUR",
-            order_id=order_id,
-            return_url=return_url,
-            cancel_url=cancel_url
-        )
-        pay_url = result["approve_url"]
-        if result.get("id"):
-            await set_pending_order_paypal_id(order_id, result["id"])
-    except Exception as e:
-        await callback.answer(f"Помилка: {e}", show_alert=True)
-        return
+    if PAYMENT_PROVIDER == "lemonsqueezy":
+        from lemonsqueezy import create_checkout
+        try:
+            result = await create_checkout(
+                variant_id=plan["ls_variant_id"],
+                order_id=order_id,
+                tg_id=tg_id,
+                plan_key=plan_key,
+                redirect_url=return_url,
+            )
+            pay_url = result["url"]
+        except Exception as e:
+            await callback.answer(f"Помилка: {e}", show_alert=True)
+            return
+
+        provider_name = "Lemon Squeezy"
+        button_text = f"💳 Оплатити {price} € карткою"
+    else:
+        # Генеруємо PayPal посилання
+        from paypal import create_order
+        cancel_url = f"{SERVER_URL}/payment/cancel?order={order_id}"
+        try:
+            result = await create_order(
+                amount=price,
+                currency="EUR",
+                order_id=order_id,
+                return_url=return_url,
+                cancel_url=cancel_url
+            )
+            pay_url = result["approve_url"]
+            if result.get("id"):
+                await set_pending_order_paypal_id(order_id, result["id"])
+        except Exception as e:
+            await callback.answer(f"Помилка: {e}", show_alert=True)
+            return
+
+        provider_name = "PayPal"
+        button_text = f"💳 Оплатити {price} € через PayPal"
 
     kb = InlineKeyboardBuilder()
-    kb.button(text=f"💳 Оплатити {price} € через PayPal", url=pay_url)
+    kb.button(text=button_text, url=pay_url)
     kb.button(text="⬅️ Назад", callback_data="show_plans")
     kb.button(text="💬 Підтримка", callback_data="open_support")
     kb.adjust(1)
 
     await callback.message.edit_text(
         f"📦 <b>{plan['name']}</b> — {price} €\n\n"
-        f"Натисни кнопку — відкриється сторінка PayPal.\n"
+        f"Натисни кнопку — відкриється сторінка оплати.\n"
         f"Після оплати бот автоматично надішле посилання на групу.\n\n"
-        f"🔒 Захищено PayPal",
+        f"🔒 Захищено {provider_name}",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )

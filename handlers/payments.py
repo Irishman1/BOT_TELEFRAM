@@ -76,13 +76,17 @@ async def _finalize_order(bot: Bot, order: dict, paypal_token: str) -> bool:
 
 
 async def paypal_success(request: web.Request) -> web.Response:
-    """Юзер повернувся після оплати PayPal"""
+    """Юзер повернувся після оплати (PayPal redirect або Lemon Squeezy redirect_url)"""
     bot: Bot = request.app["bot"]
     order_id      = request.rel_url.query.get("order", "")
     paypal_token  = request.rel_url.query.get("token", "")  # PayPal order ID
 
-    if not order_id or not paypal_token:
+    if not order_id:
         return web.Response(text="Bad request", status=400)
+
+    if not paypal_token:
+        # Lemon Squeezy: підтвердження оплати приходить через webhook
+        return web.Response(text=_success_html(), content_type="text/html")
 
     if await payment_exists(order_id):
         return web.Response(text=_success_html(), content_type="text/html")
@@ -150,6 +154,48 @@ async def paypal_webhook(request: web.Request) -> web.Response:
     return web.Response(status=200)
 
 
+async def lemonsqueezy_webhook(request: web.Request) -> web.Response:
+    """Webhook від Lemon Squeezy — обробляє оплату замовлення"""
+    bot: Bot = request.app["bot"]
+    raw = await request.read()
+
+    from lemonsqueezy import verify_signature
+    signature = request.headers.get("X-Signature", "")
+    if not verify_signature(raw, signature):
+        logger.warning("Lemon Squeezy webhook: invalid signature")
+        return web.Response(status=401)
+
+    import json
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return web.Response(status=400)
+
+    event_name = data.get("meta", {}).get("event_name", "")
+    if event_name != "order_created":
+        return web.Response(status=200)
+
+    custom = data.get("meta", {}).get("custom_data", {}) or {}
+    order_id = custom.get("order_id")
+    if not order_id:
+        return web.Response(status=200)
+
+    if await payment_exists(order_id):
+        return web.Response(status=200)
+
+    order = await get_pending_order(order_id)
+    if not order:
+        return web.Response(status=200)
+
+    ls_order_id = str(data.get("data", {}).get("id", ""))
+    status = data.get("data", {}).get("attributes", {}).get("status", "")
+    if status != "paid":
+        return web.Response(status=200)
+
+    await _finalize_order(bot, order, ls_order_id)
+    return web.Response(status=200)
+
+
 async def _notify_payment_failed(bot: Bot, tg_id: int):
     """Повідомляємо юзера що оплата не пройшла, з можливістю спробувати ще раз"""
     try:
@@ -209,4 +255,5 @@ def setup_webhook_server(bot: Bot) -> web.Application:
     app.router.add_get("/payment/success",   paypal_success)
     app.router.add_get("/payment/cancel",    paypal_cancel)
     app.router.add_post("/payment/webhook",  paypal_webhook)
+    app.router.add_post("/payment/lemonsqueezy/webhook", lemonsqueezy_webhook)
     return app
