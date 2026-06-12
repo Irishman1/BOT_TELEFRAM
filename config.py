@@ -17,9 +17,9 @@ GROUP_NAME = "Сообщество для родителей детей с ре�
 
 # Тарифи
 PLANS = {
-    "1m": {"name": "1 місяць",  "days": 30,  "price": 5,  "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
-    "3m": {"name": "3 місяці",  "days": 90,  "price": 15, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
-    "6m": {"name": "6 місяців", "days": 180, "price": 30, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_6M", "")},
+    "1m": {"name": "1 месяц",   "days": 30,  "price": 5,  "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
+    "3m": {"name": "3 месяца",  "days": 90,  "price": 15, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
+    "6m": {"name": "6 месяцев", "days": 180, "price": 30, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_6M", "")},
 }
 
 # PayPal
