@@ -3,7 +3,7 @@ from aiohttp import web
 from aiogram import Bot
 from datetime import datetime, timedelta
 
-from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME, WELCOME_TEXT
+from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME
 from database import (
     get_pending_order, delete_pending_order,
     payment_exists, save_payment,
@@ -68,8 +68,6 @@ async def _finalize_order(bot: Bot, order: dict, paypal_token: str) -> bool:
             kb.button(text="👥 Присоединиться к группе", url=link)
         await bot.send_message(tg_id, msg, parse_mode="HTML",
                                reply_markup=kb.as_markup() if link else None)
-
-        await bot.send_message(tg_id, WELCOME_TEXT)
     except Exception as e:
         logger.error(f"Telegram message error: {e}")
 
