@@ -44,14 +44,14 @@ async def cmd_start(message: Message, bot: Bot):
         expires   = datetime.fromisoformat(user["expires_at"])
         days_left = (expires - datetime.now()).days
         kb = InlineKeyboardBuilder()
-        kb.button(text="🔗 Перейти в группу", callback_data="get_link")
         kb.button(text="🔄 Продлить подписку", callback_data="show_plans")
         kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
             f"👋 Привет, {name}!\n\n"
             f"✅ У тебя активная подписка\n"
-            f"📅 Действует до: <b>{expires.strftime('%d.%m.%Y')}</b> (еще {days_left} дн.)",
+            f"📅 Действует до: <b>{expires.strftime('%d.%m.%Y')}</b> (еще {days_left} дн.)\n\n"
+            f"Чтобы получить ссылку на группу — напиши в поддержку.",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
@@ -225,7 +225,6 @@ async def cmd_status(message: Message):
         expires   = datetime.fromisoformat(user["expires_at"])
         days_left = (expires - datetime.now()).days
         kb = InlineKeyboardBuilder()
-        kb.button(text="🔗 Перейти в группу", callback_data="get_link")
         kb.button(text="🔄 Продлить подписку", callback_data="show_plans")
         kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
@@ -233,7 +232,8 @@ async def cmd_status(message: Message):
             f"📊 <b>Твоя подписка</b>\n\n"
             f"✅ Активна\n"
             f"📅 Действует до: <b>{expires.strftime('%d.%m.%Y')}</b>\n"
-            f"⏳ Осталось: <b>{days_left} дн.</b>",
+            f"⏳ Осталось: <b>{days_left} дн.</b>\n\n"
+            f"Чтобы получить ссылку на группу — напиши в поддержку.",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
