@@ -1,32 +1,32 @@
 <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
-  <div><h2>Статистика</h2><p>Загальна картина підписок і доходів</p></div>
-  <a href="/admin/backup" class="btn-sm">⬇ Завантажити бекап БД</a>
+  <div><h2>Статистика</h2><p>Общая картина подписок и доходов</p></div>
+  <a href="/admin/backup" class="btn-sm">⬇ Скачать бекап БД</a>
 </div>
 <div class="metric-grid">
-  <div class="metric"><div class="metric-label">Активних підписок</div><div class="metric-value">{{active}}</div><span class="metric-badge badge-up">зараз</span></div>
-  <div class="metric"><div class="metric-label">Всього користувачів</div><div class="metric-value">{{total}}</div><span class="metric-badge badge-up">за весь час</span></div>
-  <div class="metric"><div class="metric-label">Дохід цього місяця</div><div class="metric-value">{{monthly}} €</div><span class="metric-badge badge-up">поточний місяць</span></div>
-  <div class="metric"><div class="metric-label">Закінчується скоро</div><div class="metric-value">{{expiring}}</div><span class="metric-badge badge-warn">до 3 днів</span></div>
-  <div class="metric"><div class="metric-label">Конверсія в оплату</div><div class="metric-value">{{conversion}}%</div><span class="metric-badge badge-up">{{clicks}} відкриттів тарифів</span></div>
+  <div class="metric"><div class="metric-label">Активных подписок</div><div class="metric-value">{{active}}</div><span class="metric-badge badge-up">сейчас</span></div>
+  <div class="metric"><div class="metric-label">Всего пользователей</div><div class="metric-value">{{total}}</div><span class="metric-badge badge-up">за всё время</span></div>
+  <div class="metric"><div class="metric-label">Доход за этот месяц</div><div class="metric-value">{{monthly}} €</div><span class="metric-badge badge-up">текущий месяц</span></div>
+  <div class="metric"><div class="metric-label">Заканчивается скоро</div><div class="metric-value">{{expiring}}</div><span class="metric-badge badge-warn">до 3 дней</span></div>
+  <div class="metric"><div class="metric-label">Конверсия в оплату</div><div class="metric-value">{{conversion}}%</div><span class="metric-badge badge-up">{{clicks}} открытий тарифов</span></div>
 </div>
 <div class="charts-grid">
-  <div class="card"><div class="card-header"><h3>Нові підписки</h3></div><div class="card-body"><div style="position:relative;height:220px;"><canvas id="cSubs" role="img" aria-label="Підписки по місяцях"></canvas></div></div></div>
-  <div class="card"><div class="card-header"><h3>Дохід (€)</h3></div><div class="card-body"><div style="position:relative;height:220px;"><canvas id="cRev" role="img" aria-label="Дохід по місяцях"></canvas></div></div></div>
+  <div class="card"><div class="card-header"><h3>Новые подписки</h3></div><div class="card-body"><div style="position:relative;height:220px;"><canvas id="cSubs" role="img" aria-label="Подписки по месяцам"></canvas></div></div></div>
+  <div class="card"><div class="card-header"><h3>Доход (€)</h3></div><div class="card-body"><div style="position:relative;height:220px;"><canvas id="cRev" role="img" aria-label="Доход по месяцам"></canvas></div></div></div>
 </div>
 <div class="charts-grid">
-<div class="card"><div class="card-header"><h3>Розподіл по тарифах</h3></div>
+<div class="card"><div class="card-header"><h3>Распределение по тарифам</h3></div>
 <div class="card-body" style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
-  <div style="position:relative;height:180px;width:180px;flex-shrink:0;"><canvas id="cPlans" role="img" aria-label="Тарифи"></canvas></div>
+  <div style="position:relative;height:180px;width:180px;flex-shrink:0;"><canvas id="cPlans" role="img" aria-label="Тарифы"></canvas></div>
   <div style="display:flex;flex-direction:column;gap:10px;">{{plans_html}}</div>
 </div></div>
-<div class="card"><div class="card-header"><h3>Активні / Неактивні користувачі</h3></div>
+<div class="card"><div class="card-header"><h3>Активные / Неактивные пользователи</h3></div>
 <div class="card-body" style="display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
-  <div style="position:relative;height:180px;width:180px;flex-shrink:0;"><canvas id="cStatus" role="img" aria-label="Статус користувачів"></canvas></div>
+  <div style="position:relative;height:180px;width:180px;flex-shrink:0;"><canvas id="cStatus" role="img" aria-label="Статус пользователей"></canvas></div>
   <div style="display:flex;flex-direction:column;gap:10px;">{{status_html}}</div>
 </div></div>
 </div>
 <div class="card">
-  <div class="card-header"><h3>Втрачені оплати (відкрив тарифи → не оплатив)</h3></div>
+  <div class="card-header"><h3>Упущенные оплаты (открыл тарифы → не оплатил)</h3></div>
   <div class="card-body"><div style="position:relative;height:220px;"><canvas id="cFunnel" role="img" aria-label="Воронка оплат"></canvas></div></div>
 </div>
 <script>
@@ -36,7 +36,7 @@ new Chart(document.getElementById('cRev'),{type:'line',data:{labels:{{rev_labels
 new Chart(document.getElementById('cPlans'),{type:'doughnut',data:{labels:{{plan_labels}},datasets:[{data:{{plan_vals}},backgroundColor:['#534AB7','#1D9E75','#D85A30','#888'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}});
 new Chart(document.getElementById('cStatus'),{type:'doughnut',data:{labels:{{status_labels}},datasets:[{data:{{status_vals}},backgroundColor:['#1D9E75','#888'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}});
 new Chart(document.getElementById('cFunnel'),{type:'bar',data:{labels:{{funnel_labels}},datasets:[
-  {label:'Відкрили тарифи',data:{{funnel_clicks}},backgroundColor:'#888',borderRadius:4},
+  {label:'Открыли тарифы',data:{{funnel_clicks}},backgroundColor:'#888',borderRadius:4},
   {label:'Оплатили',data:{{funnel_payments}},backgroundColor:'#1D9E75',borderRadius:4}
 ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1}}}}});
 </script>

@@ -1,35 +1,35 @@
-<div class="page-header"><h2>Платежі</h2><p>Історія всіх транзакцій</p></div>
+<div class="page-header"><h2>Платежи</h2><p>История всех транзакций</p></div>
 
 <div class="metric-grid" style="margin-bottom:24px;">
   <div class="metric">
-    <div class="metric-label">Всього зібрано</div>
+    <div class="metric-label">Всего собрано</div>
     <div class="metric-value">{{total_all}} €</div>
-    <span class="metric-badge badge-up">за весь час</span>
+    <span class="metric-badge badge-up">за всё время</span>
   </div>
   <div class="metric">
-    <div class="metric-label">Цього місяця</div>
+    <div class="metric-label">В этом месяце</div>
     <div class="metric-value">{{total_month}} €</div>
-    <span class="metric-badge badge-up">поточний місяць</span>
+    <span class="metric-badge badge-up">текущий месяц</span>
   </div>
   <div class="metric">
-    <div class="metric-label">Всього платежів</div>
+    <div class="metric-label">Всего платежей</div>
     <div class="metric-value">{{count_all}}</div>
-    <span class="metric-badge badge-up">успішних</span>
+    <span class="metric-badge badge-up">успешных</span>
   </div>
 </div>
 
 <div class="card">
   <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-    <h3>Останні 100 платежів</h3>
-    <a href="/admin/export/payments.csv" class="btn-sm">⬇ Експорт CSV</a>
+    <h3>Последние 100 платежей</h3>
+    <a href="/admin/export/payments.csv" class="btn-sm">⬇ Экспорт CSV</a>
   </div>
   <table>
     <thead>
       <tr>
         <th>Дата</th>
-        <th>Користувач</th>
+        <th>Пользователь</th>
         <th>Тариф</th>
-        <th>Сума</th>
+        <th>Сумма</th>
         <th>Статус</th>
         <th>Чек</th>
       </tr>

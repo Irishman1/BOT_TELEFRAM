@@ -1,9 +1,9 @@
-<div class="page-header"><h2>Видати доступ</h2><p>Надати безкоштовний доступ на N днів</p></div>
+<div class="page-header"><h2>Выдать доступ</h2><p>Предоставить бесплатный доступ на N дней</p></div>
 <div class="card card-body" style="max-width:480px;">
   {{msg}}
   <form method="POST">
     <div class="form-group"><label>Username</label><input type="text" name="username" value="{{prefill}}" placeholder="@username" required></div>
-    <div class="form-group"><label>Кількість днів</label><input type="number" name="days" value="30" min="1" max="365" required></div>
-    <button class="btn btn-primary" type="submit">Видати доступ</button>
+    <div class="form-group"><label>Количество дней</label><input type="number" name="days" value="30" min="1" max="365" required></div>
+    <button class="btn btn-primary" type="submit">Выдать доступ</button>
   </form>
 </div>

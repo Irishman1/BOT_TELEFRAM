@@ -14,7 +14,7 @@ DB_PATH        = os.getenv("DB_PATH", "subscriptions.db")
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "")
 GROUP_ID       = os.getenv("GROUP_ID", "")
 
-PLANS = {"1m":"1 місяць","3m":"3 місяці","1y":"1 рік","manual":"Вручну"}
+PLANS = {"1m":"1 месяц","3m":"3 месяца","1y":"1 год","manual":"Вручную"}
 PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
@@ -85,7 +85,7 @@ async def login_post(request):
         resp.set_cookie("admin_auth", f"{ADMIN_LOGIN}:{ADMIN_PASSWORD}", max_age=86400*7, httponly=True)
         raise resp
     with open(os.path.join(TMPL_DIR, "login.html"), encoding="utf-8") as f:
-        html = f.read().replace("{{error}}", '<div class="error">Невірний логін або пароль</div>')
+        html = f.read().replace("{{error}}", '<div class="error">Неверный логин или пароль</div>')
     return web.Response(text=html, content_type="text/html")
 
 async def logout(request):
@@ -103,9 +103,9 @@ async def stats(request):
     subs  = await db_fetch("SELECT strftime('%m',subscribed_at) as m,COUNT(*) as c FROM users WHERE subscribed_at IS NOT NULL GROUP BY m ORDER BY m")
     revs  = await db_fetch("SELECT strftime('%m',paid_at) as m,ROUND(SUM(amount)) as s FROM payments WHERE status='success' GROUP BY m ORDER BY m")
     plans = await db_fetch("SELECT plan,COUNT(*) as c FROM users WHERE is_active=1 GROUP BY plan")
-    months = ['Січ','Лют','Бер','Кві','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру']
+    months = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
     colors = ['#534AB7','#1D9E75','#D85A30','#888']
-    plans_html = "".join(f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{colors[i%4]};flex-shrink:0;"></span><span>{PLANS.get(r["plan"],r["plan"])} — <strong>{r["c"]}</strong> чол.</span></div>' for i,r in enumerate(plans))
+    plans_html = "".join(f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{colors[i%4]};flex-shrink:0;"></span><span>{PLANS.get(r["plan"],r["plan"])} — <strong>{r["c"]}</strong> чел.</span></div>' for i,r in enumerate(plans))
 
     clicks = await get_buy_clicks_count()
     paid_count = (await db_one("SELECT COUNT(*) as c FROM payments WHERE status='success'"))["c"]
@@ -118,11 +118,11 @@ async def stats(request):
     funnel_payments = [cp["payments"].get(m, 0) for m in funnel_months]
 
     inactive = max(total - active, 0)
-    status_labels = ["Активні", "Неактивні"]
+    status_labels = ["Активные", "Неактивные"]
     status_vals = [active, inactive]
     status_colors = ['#1D9E75', '#888']
     status_html = "".join(
-        f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{c};flex-shrink:0;"></span><span>{l} — <strong>{v}</strong> чол.</span></div>'
+        f'<div style="display:flex;align-items:center;gap:8px;font-size:14px;"><span style="width:12px;height:12px;border-radius:3px;background:{c};flex-shrink:0;"></span><span>{l} — <strong>{v}</strong> чел.</span></div>'
         for l, v, c in zip(status_labels, status_vals, status_colors)
     )
 
@@ -157,7 +157,7 @@ async def users_page(request):
         rows = await db_fetch("SELECT * FROM users ORDER BY is_active DESC,expires_at ASC")
     rows_html = ""
     for u in rows:
-        badge = '<span class="badge badge-active">Активний</span>' if u["is_active"] else '<span class="badge badge-expired">Неактивний</span>'
+        badge = '<span class="badge badge-active">Активный</span>' if u["is_active"] else '<span class="badge badge-expired">Неактивный</span>'
         exp = (u["expires_at"] or "")[:10] or "—"
         un = u["username"] or str(u["tg_id"])
         plan = PLANS.get(u["plan"], u["plan"] or "—")
@@ -169,8 +169,8 @@ async def users_page(request):
             f"<td>{exp}</td>"
             f"<td>{badge}</td>"
             f"<td style='display:flex;gap:6px'>"
-            f"<a href='/admin/give?u={un}' class='btn-sm'>Продовжити</a> "
-            f"<a href='/admin/kick?u={un}' class='btn-sm danger'>Кік</a>"
+            f"<a href='/admin/give?u={un}' class='btn-sm'>Продлить</a> "
+            f"<a href='/admin/kick?u={un}' class='btn-sm danger'>Кик</a>"
             "</td></tr>"
         )
     return await render("users.html", page="users", rows=rows_html, count=len(rows), search=q)
@@ -186,10 +186,10 @@ async def find_post(request):
     q = data.get("q","").lstrip("@")
     u = await db_one("SELECT * FROM users WHERE username=? OR tg_id=?",(q,q))
     if not u:
-        return await render("find.html", page="find", result='<div class="alert alert-danger">Користувача не знайдено</div>')
-    s = '<span class="badge badge-active">Активний</span>' if u["is_active"] else '<span class="badge badge-expired">Неактивний</span>'
+        return await render("find.html", page="find", result='<div class="alert alert-danger">Пользователь не найден</div>')
+    s = '<span class="badge badge-active">Активный</span>' if u["is_active"] else '<span class="badge badge-expired">Неактивный</span>'
     exp = (u["expires_at"] or "")[:10] or "—"
-    result = f'<div class="user-card" style="margin-top:20px;border-top:1px solid #e5e7ef;padding-top:20px;"><div class="user-card-name">{u["full_name"] or u["username"]} {s}</div><div class="user-meta"><div class="user-meta-item"><label>Username</label><p>@{u["username"] or "—"}</p></div><div class="user-meta-item"><label>Telegram ID</label><p>{u["tg_id"]}</p></div><div class="user-meta-item"><label>Тариф</label><p>{PLANS.get(u["plan"],u["plan"] or "—")}</p></div><div class="user-meta-item"><label>До</label><p>{exp}</p></div></div><div style="display:flex;gap:8px;margin-top:16px;"><a href="/admin/give?u={u["username"]}" class="btn btn-primary" style="font-size:13px;padding:7px 14px;">Продовжити</a><a href="/admin/kick?u={u["username"]}" class="btn btn-danger" style="font-size:13px;padding:7px 14px;">Видалити</a></div></div>'
+    result = f'<div class="user-card" style="margin-top:20px;border-top:1px solid #e5e7ef;padding-top:20px;"><div class="user-card-name">{u["full_name"] or u["username"]} {s}</div><div class="user-meta"><div class="user-meta-item"><label>Username</label><p>@{u["username"] or "—"}</p></div><div class="user-meta-item"><label>Telegram ID</label><p>{u["tg_id"]}</p></div><div class="user-meta-item"><label>Тариф</label><p>{PLANS.get(u["plan"],u["plan"] or "—")}</p></div><div class="user-meta-item"><label>До</label><p>{exp}</p></div></div><div style="display:flex;gap:8px;margin-top:16px;"><a href="/admin/give?u={u["username"]}" class="btn btn-primary" style="font-size:13px;padding:7px 14px;">Продлить</a><a href="/admin/kick?u={u["username"]}" class="btn btn-danger" style="font-size:13px;padding:7px 14px;">Удалить</a></div></div>'
     return await render("find.html", page="find", result=result)
 
 
@@ -204,15 +204,15 @@ async def give_post(request):
     days = int(data.get("days",30))
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
     if not u:
-        return await render("give.html", page="give", msg='<div class="alert alert-danger">Користувача не знайдено</div>', prefill=username)
+        return await render("give.html", page="give", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
     now = datetime.now()
     exp = u.get("expires_at")
     cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
     new_exp = (cur if cur > now else now) + timedelta(days=days)
     await db_exec("UPDATE users SET expires_at=?,plan='manual',is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),now.isoformat(),username))
-    try: await send_tg(u["tg_id"],f"🎁 Адміністратор надав доступ на <b>{days} днів</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>\n\n/getlink")
+    try: await send_tg(u["tg_id"],f"🎁 Администратор предоставил доступ на <b>{days} дней</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>\n\n/getlink")
     except: pass
-    return await render("give.html", page="give", msg=f'<div class="alert alert-success">✅ @{username} отримав доступ на {days} днів до {new_exp.strftime("%d.%m.%Y")}</div>', prefill="")
+    return await render("give.html", page="give", msg=f'<div class="alert alert-success">✅ @{username} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>', prefill="")
 
 
 @require_login
@@ -225,15 +225,15 @@ async def kick_post(request):
     username = data.get("username","").lstrip("@")
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
     if not u:
-        return await render("kick.html", page="kick", msg='<div class="alert alert-danger">Користувача не знайдено</div>', prefill=username)
+        return await render("kick.html", page="kick", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
     await db_exec("UPDATE users SET is_active=0 WHERE username=?",(username,))
     import aiohttp as _h
     async with _h.ClientSession() as s:
         await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/banChatMember",  json={"chat_id":GROUP_ID,"user_id":u["tg_id"]})
         await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/unbanChatMember",json={"chat_id":GROUP_ID,"user_id":u["tg_id"]})
-    try: await send_tg(u["tg_id"],"❌ Твій доступ скасовано адміністратором.")
+    try: await send_tg(u["tg_id"],"❌ Твой доступ отменён администратором.")
     except: pass
-    return await render("kick.html", page="kick", msg=f'<div class="alert alert-success">✅ @{username} видалено з групи</div>', prefill="")
+    return await render("kick.html", page="kick", msg=f'<div class="alert alert-success">✅ @{username} удалён из группы</div>', prefill="")
 
 
 @require_login
@@ -262,7 +262,7 @@ async def broadcast_post(request):
     for u in users:
         try: await send_tg(u["tg_id"],text); sent+=1
         except: failed+=1
-    return await render("broadcast.html", page="broadcast", result=f'<div class="alert alert-success">✅ Надіслано: <strong>{sent}</strong>, помилок: <strong>{failed}</strong></div>')
+    return await render("broadcast.html", page="broadcast", result=f'<div class="alert alert-success">✅ Отправлено: <strong>{sent}</strong>, ошибок: <strong>{failed}</strong></div>')
 
 
 # ─── Support messages ────────────────────────────────────────
@@ -275,8 +275,8 @@ async def support_page(request):
         un = f"@{m['username']}" if m.get("username") else (m.get("full_name") or "")
         date = (m["created_at"] or "")[:16].replace("T", " ")
         read_cls = "" if m["is_read"] else 'style="font-weight:600;background:#f0effe;"'
-        status = '<span class="badge badge-active">Прочитано</span>' if m["is_read"] else '<span class="badge badge-expired">Нове</span>'
-        action = "" if m["is_read"] else f'<a href="/admin/support/read?id={m["id"]}" class="btn-sm">Позначити прочитаним</a>'
+        status = '<span class="badge badge-active">Прочитано</span>' if m["is_read"] else '<span class="badge badge-expired">Новое</span>'
+        action = "" if m["is_read"] else f'<a href="/admin/support/read?id={m["id"]}" class="btn-sm">Отметить прочитанным</a>'
         rows_html += f"""<tr {read_cls}>
             <td>{date}</td>
             <td>{un}<br><span style="color:var(--muted);font-size:12px;">{m['tg_id']}</span></td>
@@ -285,7 +285,7 @@ async def support_page(request):
             <td>{action}</td>
         </tr>"""
     if not rows_html:
-        rows_html = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Повідомлень немає</td></tr>'
+        rows_html = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Сообщений нет</td></tr>'
     return await render("support.html", page="support", rows=rows_html)
 
 
@@ -350,9 +350,9 @@ async def promo_page(request):
     promos = await get_all_promos()
     rows_html = ""
     for p in promos:
-        status = '<span class="badge badge-active">Активний</span>' if p["is_active"] else '<span class="badge badge-expired">Вимкнено</span>'
+        status = '<span class="badge badge-active">Активный</span>' if p["is_active"] else '<span class="badge badge-expired">Отключен</span>'
         limit = p["max_uses"] if p["max_uses"] else "∞"
-        toggle_text = "Вимкнути" if p["is_active"] else "Увімкнути"
+        toggle_text = "Отключить" if p["is_active"] else "Включить"
 
         users = await db_fetch("""
             SELECT pay.paid_at, pay.amount, u.username, u.full_name, u.tg_id
@@ -370,7 +370,7 @@ async def promo_page(request):
                 for u in users
             )
         else:
-            users_html = "<div style='font-size:13px;color:#6b7280;'>Ще ніхто не використав</div>"
+            users_html = "<div style='font-size:13px;color:#6b7280;'>Ещё никто не использовал</div>"
 
         rows_html += (
             "<tr>"
@@ -380,7 +380,7 @@ async def promo_page(request):
             f"<td>{status}</td>"
             f"<td style='display:flex;gap:6px'>"
             f"<a href='/admin/promo/toggle?code={p['code']}' class='btn-sm'>{toggle_text}</a>"
-            f"<a href='/admin/promo/delete?code={p['code']}' class='btn-sm danger'>Видалити</a>"
+            f"<a href='/admin/promo/delete?code={p['code']}' class='btn-sm danger'>Удалить</a>"
             "</td></tr>"
             f"<tr><td colspan='5' style='background:#fafafe;padding:8px 12px;'>{users_html}</td></tr>"
         )
@@ -459,9 +459,9 @@ async def payments_page(request):
     rows_html = ""
     for p in rows:
         status_badge = {
-            "success": '<span class="badge badge-active">Успішно</span>',
+            "success": '<span class="badge badge-active">Успешно</span>',
             "sandbox": '<span class="badge" style="background:#e0f2fe;color:#0369a1;">Тест</span>',
-            "failure": '<span class="badge badge-expired">Помилка</span>',
+            "failure": '<span class="badge badge-expired">Ошибка</span>',
         }.get(p["status"], f'<span class="badge">{p["status"]}</span>')
 
         paid_at = (p["paid_at"] or "")[:16].replace("T", " ")
@@ -501,7 +501,7 @@ async def receipt_page(request):
         WHERE p.order_id = ?
     """, (order_id,))
     if not p:
-        return web.Response(text="Платіж не знайдено", status=404)
+        return web.Response(text="Платёж не найден", status=404)
 
     paid_at = (p["paid_at"] or "")[:16].replace("T", " ")
     name = p["full_name"] or "—"
@@ -514,7 +514,7 @@ async def receipt_page(request):
     paypal_link = ""
     if p.get("paypal_order_id"):
         mode = "sandbox." if PAYPAL_MODE == "sandbox" else ""
-        paypal_link = f'<a href="https://www.{mode}paypal.com/activity/payment/{p["paypal_order_id"]}" target="_blank" class="btn-sm">Відкрити в PayPal →</a>'
+        paypal_link = f'<a href="https://www.{mode}paypal.com/activity/payment/{p["paypal_order_id"]}" target="_blank" class="btn-sm">Открыть в PayPal →</a>'
 
     return await render("receipt.html", page="payments",
         order_id=p["order_id"],

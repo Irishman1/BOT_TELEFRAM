@@ -1,21 +1,21 @@
-<div class="page-header"><h2>Чек оплати</h2><p>Деталі транзакції</p></div>
+<div class="page-header"><h2>Чек оплаты</h2><p>Детали транзакции</p></div>
 
 <div class="card" style="max-width:480px;">
-  <div class="card-header"><h3>Замовлення {{order_id}}</h3></div>
+  <div class="card-header"><h3>Заказ {{order_id}}</h3></div>
   <div class="card-body">
     <div class="user-meta">
       <div class="user-meta-item"><label>Дата</label><p>{{paid_at}}</p></div>
       <div class="user-meta-item"><label>Статус</label><p>{{status}}</p></div>
-      <div class="user-meta-item"><label>Користувач</label><p>{{name}} ({{username}})</p></div>
+      <div class="user-meta-item"><label>Пользователь</label><p>{{name}} ({{username}})</p></div>
       <div class="user-meta-item"><label>Telegram ID</label><p>{{tg_id}}</p></div>
       <div class="user-meta-item"><label>Тариф</label><p>{{plan}}</p></div>
-      <div class="user-meta-item"><label>Сума</label><p>{{amount}} €</p></div>
+      <div class="user-meta-item"><label>Сумма</label><p>{{amount}} €</p></div>
       <div class="user-meta-item"><label>Промокод</label><p>{{promo_code}}</p></div>
       <div class="user-meta-item"><label>PayPal Order ID</label><p>{{paypal_order_id}}</p></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:8px;">
       {{paypal_link}}
-      <a href="/admin/payments" class="btn-sm">← Назад до платежів</a>
+      <a href="/admin/payments" class="btn-sm">← Назад к платежам</a>
     </div>
   </div>
 </div>

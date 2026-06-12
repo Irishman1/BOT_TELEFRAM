@@ -17,10 +17,10 @@ DB_PATH        = os.getenv("DB_PATH", "subscriptions.db")
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "")
 
 PLANS = {
-    "1m": "1 місяць",
-    "3m": "3 місяці",
-    "1y": "1 рік",
-    "manual": "Вручну",
+    "1m": "1 месяц",
+    "3m": "3 месяца",
+    "1y": "1 год",
+    "manual": "Вручную",
 }
 
 
@@ -79,7 +79,7 @@ def login():
                 request.form.get("password") == ADMIN_PASSWORD):
             session["logged_in"] = True
             return redirect(url_for("stats"))
-        error = "Невірний логін або пароль"
+        error = "Неверный логин или пароль"
     return render_template("login.html", error=error)
 
 
@@ -189,11 +189,11 @@ def give():
                 (new_exp.isoformat(), now.isoformat(), username)
             )
             await send_telegram(user["tg_id"],
-                f"🎁 Адміністратор надав тобі доступ на <b>{days} днів</b>!\n"
-                f"📅 Підписка до: <b>{new_exp.strftime('%d.%m.%Y')}</b>\n\n"
+                f"🎁 Администратор предоставил тебе доступ на <b>{days} дней</b>!\n"
+                f"📅 Подписка до: <b>{new_exp.strftime('%d.%m.%Y')}</b>\n\n"
                 f"Отримай посилання: /getlink"
             )
-            return user, f"✅ @{username} отримав доступ на {days} днів до {new_exp.strftime('%d.%m.%Y')}"
+            return user, f"✅ @{username} получил доступ на {days} дней до {new_exp.strftime('%d.%m.%Y')}"
 
         user, msg = run_async(_())
 
@@ -221,7 +221,7 @@ def kick():
                              json={"chat_id": group_id, "user_id": user["tg_id"]})
                 await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/unbanChatMember",
                              json={"chat_id": group_id, "user_id": user["tg_id"]})
-            await send_telegram(user["tg_id"], "❌ Твій доступ скасовано адміністратором.")
+            await send_telegram(user["tg_id"], "❌ Твой доступ отменён администратором.")
             return f"✅ @{username} видалено з групи"
 
         msg = run_async(_())

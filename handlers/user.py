@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
-from config import GROUP_ID, GROUP_NAME, GROUP_DESCRIPTION, SERVER_URL, PLANS, PAYMENT_PROVIDER
+from config import GROUP_ID, GROUP_NAME, SERVER_URL, PLANS, PAYMENT_PROVIDER, WELCOME_TEXT
 from database import (
     upsert_user, get_user, save_invite_link, get_invite_link,
     activate_subscription, save_pending_order, get_promo, log_buy_click,
@@ -60,12 +60,9 @@ async def cmd_start(message: Message, bot: Bot):
         kb.button(text="💳 Оплатить", callback_data="show_plans")
         kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
+        await message.answer(WELCOME_TEXT)
         await message.answer(
-            f"👋 Привет, {name}!\n\n"
-            f"🔐 <b>{GROUP_NAME}</b>\n"
-            f"{GROUP_DESCRIPTION}\n\n"
             f"Нажми кнопку ниже, чтобы оформить подписку:",
-            parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
 

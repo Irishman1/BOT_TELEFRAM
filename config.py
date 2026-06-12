@@ -12,9 +12,8 @@ ADMIN_IDS = list(map(int, os.getenv("ADMIN_IDS", "123456789").split(",")))
 SERVER_URL = os.getenv("SERVER_URL", "https://your-app.railway.app")
 WEBHOOK_PATH = "/webhook/liqpay"
 
-# Група
-GROUP_NAME = "Назва вашої групи"
-GROUP_DESCRIPTION = "Опис — що отримає учасник"
+# Группа
+GROUP_NAME = "Сообщество для родителей детей с речевыми трудностями"
 
 # Тарифи
 PLANS = {
