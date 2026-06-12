@@ -44,33 +44,33 @@ async def cmd_start(message: Message, bot: Bot):
         expires   = datetime.fromisoformat(user["expires_at"])
         days_left = (expires - datetime.now()).days
         kb = InlineKeyboardBuilder()
-        kb.button(text="🔗 Перейти до групи", callback_data="get_link")
-        kb.button(text="🔄 Продовжити підписку", callback_data="show_plans")
-        kb.button(text="💬 Підтримка", callback_data="open_support")
+        kb.button(text="🔗 Перейти в группу", callback_data="get_link")
+        kb.button(text="🔄 Продлить подписку", callback_data="show_plans")
+        kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
-            f"👋 Привіт, {name}!\n\n"
-            f"✅ У тебе активна підписка\n"
-            f"📅 Діє до: <b>{expires.strftime('%d.%m.%Y')}</b> (ще {days_left} дн.)",
+            f"👋 Привет, {name}!\n\n"
+            f"✅ У тебя активная подписка\n"
+            f"📅 Действует до: <b>{expires.strftime('%d.%m.%Y')}</b> (еще {days_left} дн.)",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
     else:
         kb = InlineKeyboardBuilder()
-        kb.button(text="💳 Оплатити", callback_data="show_plans")
-        kb.button(text="💬 Підтримка", callback_data="open_support")
+        kb.button(text="💳 Оплатить", callback_data="show_plans")
+        kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
-            f"👋 Привіт, {name}!\n\n"
+            f"👋 Привет, {name}!\n\n"
             f"🔐 <b>{GROUP_NAME}</b>\n"
             f"{GROUP_DESCRIPTION}\n\n"
-            f"Натисни кнопку нижче, щоб оформити підписку:",
+            f"Нажми кнопку ниже, чтобы оформить подписку:",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
 
 
-# ─── Показати тарифи ────────────────────────────────────────
+# ─── Показать тарифы ────────────────────────────────────────
 
 @router.callback_query(lambda c: c.data == "show_plans")
 async def show_plans(callback: CallbackQuery, state: FSMContext):
@@ -84,18 +84,18 @@ async def show_plans(callback: CallbackQuery, state: FSMContext):
         price = plan["price"]
         if discount:
             price = round(price * (100 - discount) / 100, 2)
-            text = f"💳 {plan['name']} — {price} € (було {plan['price']} €)"
+            text = f"💳 {plan['name']} — {price} € (было {plan['price']} €)"
         else:
             text = f"💳 {plan['name']} — {price} €"
         kb.button(text=text, callback_data=f"buy:{key}")
     if not promo_code:
-        kb.button(text="🎟 У мене є промокод", callback_data="enter_promo")
-    kb.button(text="💬 Підтримка", callback_data="open_support")
+        kb.button(text="🎟 У меня есть промокод", callback_data="enter_promo")
+    kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
 
-    promo_line = f"\n🎟 Промокод <b>{promo_code}</b> застосовано (-{discount}%)\n" if promo_code else ""
+    promo_line = f"\n🎟 Промокод <b>{promo_code}</b> применён (-{discount}%)\n" if promo_code else ""
     await callback.message.answer(
-        f"💳 <b>Тарифи — {GROUP_NAME}</b>\n{promo_line}\nОбери тариф:",
+        f"💳 <b>Тарифы — {GROUP_NAME}</b>\n{promo_line}\nВыбери тариф:",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -108,10 +108,10 @@ async def show_plans(callback: CallbackQuery, state: FSMContext):
 async def enter_promo(callback: CallbackQuery, state: FSMContext):
     await state.set_state(PromoState.waiting_code)
     kb = InlineKeyboardBuilder()
-    kb.button(text="💬 Підтримка", callback_data="open_support")
+    kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
     await callback.message.edit_text(
-        "🎟 Введи промокод повідомленням:",
+        "🎟 Введи промокод сообщением:",
         reply_markup=kb.as_markup()
     )
     await callback.answer()
@@ -122,7 +122,7 @@ async def process_promo(message: Message, state: FSMContext):
     code = message.text.strip()
     promo = await get_promo(code)
     if not promo:
-        await message.answer("❌ Промокод недійсний або вже не активний. Спробуй ще раз або /start")
+        await message.answer("❌ Промокод недействителен или уже не активен. Попробуй ещё раз или /start")
         return
 
     await state.update_data(promo_code=promo["code"], promo_discount=promo["discount"])
@@ -131,18 +131,18 @@ async def process_promo(message: Message, state: FSMContext):
     kb = InlineKeyboardBuilder()
     for key, plan in PLANS.items():
         price = round(plan["price"] * (100 - promo["discount"]) / 100, 2)
-        kb.button(text=f"💳 {plan['name']} — {price} € (було {plan['price']} €)", callback_data=f"buy:{key}")
-    kb.button(text="💬 Підтримка", callback_data="open_support")
+        kb.button(text=f"💳 {plan['name']} — {price} € (было {plan['price']} €)", callback_data=f"buy:{key}")
+    kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
 
     await message.answer(
-        f"✅ Промокод <b>{promo['code']}</b> застосовано! Знижка -{promo['discount']}%\n\nОбери тариф:",
+        f"✅ Промокод <b>{promo['code']}</b> применён! Скидка -{promo['discount']}%\n\nВыбери тариф:",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
 
 
-# ─── Вибір тарифу → PayPal ──────────────────────────────────
+# ─── Выбор тарифа → оплата ──────────────────────────────────
 
 @router.callback_query(lambda c: c.data.startswith("buy:"))
 async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
@@ -173,13 +173,13 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
             )
             pay_url = result["url"]
         except Exception as e:
-            await callback.answer(f"Помилка: {e}", show_alert=True)
+            await callback.answer(f"Ошибка: {e}", show_alert=True)
             return
 
         provider_name = "Lemon Squeezy"
-        button_text = f"💳 Оплатити {price} € карткою"
+        button_text = f"💳 Оплатить {price} € картой"
     else:
-        # Генеруємо PayPal посилання
+        # Генерируем PayPal ссылку
         from paypal import create_order
         cancel_url = f"{SERVER_URL}/payment/cancel?order={order_id}"
         try:
@@ -194,23 +194,23 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
             if result.get("id"):
                 await set_pending_order_paypal_id(order_id, result["id"])
         except Exception as e:
-            await callback.answer(f"Помилка: {e}", show_alert=True)
+            await callback.answer(f"Ошибка: {e}", show_alert=True)
             return
 
         provider_name = "PayPal"
-        button_text = f"💳 Оплатити {price} € через PayPal"
+        button_text = f"💳 Оплатить {price} € через PayPal"
 
     kb = InlineKeyboardBuilder()
     kb.button(text=button_text, url=pay_url)
     kb.button(text="⬅️ Назад", callback_data="show_plans")
-    kb.button(text="💬 Підтримка", callback_data="open_support")
+    kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
 
     await callback.message.edit_text(
         f"📦 <b>{plan['name']}</b> — {price} €\n\n"
-        f"Натисни кнопку — відкриється сторінка оплати.\n"
-        f"Після оплати бот автоматично надішле посилання на групу.\n\n"
-        f"🔒 Захищено {provider_name}",
+        f"Нажми кнопку — откроется страница оплаты.\n"
+        f"После оплаты бот автоматически отправит ссылку на группу.\n\n"
+        f"🔒 Защищено {provider_name}",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -228,26 +228,26 @@ async def cmd_status(message: Message):
         expires   = datetime.fromisoformat(user["expires_at"])
         days_left = (expires - datetime.now()).days
         kb = InlineKeyboardBuilder()
-        kb.button(text="🔗 Перейти до групи", callback_data="get_link")
-        kb.button(text="🔄 Продовжити підписку", callback_data="show_plans")
-        kb.button(text="💬 Підтримка", callback_data="open_support")
+        kb.button(text="🔗 Перейти в группу", callback_data="get_link")
+        kb.button(text="🔄 Продлить подписку", callback_data="show_plans")
+        kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
-            f"📊 <b>Твоя підписка</b>\n\n"
+            f"📊 <b>Твоя подписка</b>\n\n"
             f"✅ Активна\n"
-            f"📅 Діє до: <b>{expires.strftime('%d.%m.%Y')}</b>\n"
-            f"⏳ Залишилось: <b>{days_left} дн.</b>",
+            f"📅 Действует до: <b>{expires.strftime('%d.%m.%Y')}</b>\n"
+            f"⏳ Осталось: <b>{days_left} дн.</b>",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
     else:
         kb = InlineKeyboardBuilder()
-        kb.button(text="💳 Оплатити", callback_data="show_plans")
-        kb.button(text="💬 Підтримка", callback_data="open_support")
+        kb.button(text="💳 Оплатить", callback_data="show_plans")
+        kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
-            "📊 <b>Твоя підписка</b>\n\n"
-            "❌ Немає активної підписки",
+            "📊 <b>Твоя подписка</b>\n\n"
+            "❌ Нет активной подписки",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
@@ -259,10 +259,10 @@ async def cmd_status(message: Message):
 async def cmd_history(message: Message):
     payments = await get_user_payments(message.from_user.id)
     if not payments:
-        await message.answer("📜 Історія платежів порожня.")
+        await message.answer("📜 История платежей пуста.")
         return
 
-    lines = ["📜 <b>Історія платежів</b>\n"]
+    lines = ["📜 <b>История платежей</b>\n"]
     for p in payments:
         date = (p["paid_at"] or "")[:10]
         plan = PLANS.get(p["plan"])
@@ -279,7 +279,7 @@ async def cmd_history(message: Message):
 async def cmd_support(message: Message, state: FSMContext):
     await state.set_state(SupportState.waiting_message)
     await message.answer(
-        "💬 Напиши своє повідомлення — адміністратор отримає його та відповість тобі особисто."
+        "💬 Напиши своё сообщение — администратор получит его и ответит тебе лично."
     )
 
 
@@ -287,7 +287,7 @@ async def cmd_support(message: Message, state: FSMContext):
 async def open_support(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SupportState.waiting_message)
     await callback.message.answer(
-        "💬 Напиши своє повідомлення — адміністратор отримає його та відповість тобі особисто."
+        "💬 Напиши своё сообщение — администратор получит его и ответит тебе лично."
     )
     await callback.answer()
 
@@ -296,7 +296,7 @@ async def open_support(callback: CallbackQuery, state: FSMContext):
 async def process_support_message(message: Message, state: FSMContext, bot: Bot):
     await save_support_message(message.from_user.id, message.text or "")
     await state.set_state(None)
-    await message.answer("✅ Повідомлення надіслано адміністратору. Дякуємо!")
+    await message.answer("✅ Сообщение отправлено администратору. Спасибо!")
 
     name = message.from_user.full_name
     un = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
@@ -304,8 +304,8 @@ async def process_support_message(message: Message, state: FSMContext, bot: Bot)
         try:
             await bot.send_message(
                 admin_id,
-                f"💬 <b>Нове повідомлення підтримки</b>\n\n"
-                f"Від: {name} ({un})\n"
+                f"💬 <b>Новое сообщение в поддержку</b>\n\n"
+                f"От: {name} ({un})\n"
                 f"ID: {message.from_user.id}\n\n"
                 f"{message.text}",
                 parse_mode="HTML"
@@ -324,7 +324,7 @@ async def get_group_link(event, bot: Bot):
 
     user = await get_user(tg_id)
     if not user or not user["is_active"]:
-        text = "❌ Немає активної підписки. Оформити: /start"
+        text = "❌ Нет активной подписки. Оформить: /start"
         if isinstance(event, CallbackQuery):
             await event.answer(text, show_alert=True)
         else:
@@ -345,14 +345,14 @@ async def get_group_link(event, bot: Bot):
         link = invite.invite_link
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="👥 Перейти до групи", url=link)
-    kb.button(text="💬 Підтримка", callback_data="open_support")
+    kb.button(text="👥 Перейти в группу", url=link)
+    kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
 
     await message.answer(
-        f"🔗 <b>Твоє посилання:</b>\n\n{link}\n\n"
-        f"⏱ <b>Діє лише 15 хвилин!</b>\n"
-        f"⚠️ Одноразове — тільки для тебе. Не передавай нікому.",
+        f"🔗 <b>Твоя ссылка:</b>\n\n{link}\n\n"
+        f"⏱ <b>Действует только 15 минут!</b>\n"
+        f"⚠️ Одноразовая — только для тебя. Не передавай никому.",
         parse_mode="HTML",
         reply_markup=kb.as_markup()
     )
@@ -366,10 +366,10 @@ async def get_group_link(event, bot: Bot):
 async def cmd_cancel(message: Message, state: FSMContext):
     current = await state.get_state()
     if current is None:
-        await message.answer("Немає чого скасовувати.")
+        await message.answer("Нечего отменять.")
         return
     await state.set_state(None)
-    await message.answer("❌ Скасовано. /start — головне меню")
+    await message.answer("❌ Отменено. /start — главное меню")
 
 
 # ─── /help ───────────────────────────────────────────────────
@@ -377,13 +377,13 @@ async def cmd_cancel(message: Message, state: FSMContext):
 @router.message(Command("help"))
 async def cmd_help(message: Message):
     await message.answer(
-        "ℹ️ <b>Допомога</b>\n\n"
-        "/start — головне меню\n"
-        "/status — моя підписка\n"
-        "/history — історія платежів\n"
-        "/getlink — посилання на групу\n"
-        "/support — написати в підтримку\n"
-        "/cancel — скасувати поточну дію\n"
-        "/help — довідка",
+        "ℹ️ <b>Помощь</b>\n\n"
+        "/start — главное меню\n"
+        "/status — моя подписка\n"
+        "/history — история платежей\n"
+        "/getlink — ссылка на группу\n"
+        "/support — написать в поддержку\n"
+        "/cancel — отменить текущее действие\n"
+        "/help — справка",
         parse_mode="HTML"
     )

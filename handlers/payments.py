@@ -3,7 +3,7 @@ from aiohttp import web
 from aiogram import Bot
 from datetime import datetime, timedelta
 
-from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME
+from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME, WELCOME_TEXT
 from database import (
     get_pending_order, delete_pending_order,
     payment_exists, save_payment,
@@ -49,25 +49,27 @@ async def _finalize_order(bot: Bot, order: dict, paypal_token: str) -> bool:
         logger.error(f"Invite link error: {e}")
         link = None
 
-    # Надсилаємо в Telegram
+    # Отправляем в Telegram
     try:
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         kb = InlineKeyboardBuilder()
         msg = (
-            f"✅ <b>Оплата через PayPal успішна!</b>\n\n"
+            f"✅ <b>Оплата прошла успешно!</b>\n\n"
             f"📦 Тариф: {plan['name']}\n"
-            f"💰 Сплачено: {price} €\n"
-            f"📅 Підписка до: <b>{new_expiry.strftime('%d.%m.%Y')}</b>\n"
+            f"💰 Оплачено: {price} €\n"
+            f"📅 Подписка до: <b>{new_expiry.strftime('%d.%m.%Y')}</b>\n"
         )
         if link:
             msg += (
-                f"\n\n🔗 <b>Твоє посилання на групу:</b>\n{link}\n\n"
-                f"⏱ <b>Діє лише 15 хвилин!</b>\n"
-                f"⚠️ Одноразове — тільки для тебе. Не передавай нікому."
+                f"\n\n🔗 <b>Твоя ссылка на группу:</b>\n{link}\n\n"
+                f"⏱ <b>Действует только 15 минут!</b>\n"
+                f"⚠️ Одноразовая — только для тебя. Не передавай никому."
             )
-            kb.button(text="👥 Приєднатися до групи", url=link)
+            kb.button(text="👥 Присоединиться к группе", url=link)
         await bot.send_message(tg_id, msg, parse_mode="HTML",
                                reply_markup=kb.as_markup() if link else None)
+
+        await bot.send_message(tg_id, WELCOME_TEXT)
     except Exception as e:
         logger.error(f"Telegram message error: {e}")
 
@@ -201,12 +203,12 @@ async def _notify_payment_failed(bot: Bot, tg_id: int):
     try:
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         kb = InlineKeyboardBuilder()
-        kb.button(text="🔄 Спробувати ще раз", callback_data="show_plans")
+        kb.button(text="🔄 Попробовать снова", callback_data="show_plans")
         await bot.send_message(
             tg_id,
-            "❌ <b>Оплата не пройшла</b>\n\n"
-            "Щось пішло не так під час обробки платежу. "
-            "Спробуй ще раз або зверніться в підтримку.",
+            "❌ <b>Оплата не прошла</b>\n\n"
+            "Что-то пошло не так при обработке платежа. "
+            "Попробуй ещё раз или обратись в поддержку.",
             parse_mode="HTML",
             reply_markup=kb.as_markup()
         )
@@ -220,33 +222,33 @@ async def paypal_cancel(request: web.Request) -> web.Response:
 
 
 def _success_html():
-    return f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+    return f"""<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Оплата успішна</title>
+<title>Оплата успешна</title>
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#0070ba;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
-<body><div class="card"><div class="icon">✅</div><h1>Оплату здійснено!</h1>
-<p>Повернись до бота — він вже надіслав тобі посилання на групу.</p>
-<a href="https://t.me/{BOT_USERNAME}">Повернутися до бота →</a></div></body></html>"""
+<body><div class="card"><div class="icon">✅</div><h1>Оплата произведена!</h1>
+<p>Вернись в бота — он уже отправил тебе ссылку на группу.</p>
+<a href="https://t.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
 
 
 def _error_html():
-    return f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+    return f"""<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Помилка</title>
+<title>Ошибка</title>
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#dc2626;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
-<body><div class="card"><div class="icon">❌</div><h1>Помилка оплати</h1>
-<p>Щось пішло не так. Поверніться до бота і спробуйте ще раз.</p>
-<a href="https://t.me/{BOT_USERNAME}">Повернутися до бота →</a></div></body></html>"""
+<body><div class="card"><div class="icon">❌</div><h1>Ошибка оплаты</h1>
+<p>Что-то пошло не так. Вернись в бота и попробуй снова.</p>
+<a href="https://t.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
 
 
 def _cancel_html():
-    return f"""<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8">
+    return f"""<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Скасовано</title>
+<title>Отменено</title>
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
-<body><div class="card"><div class="icon">↩️</div><h1>Оплату скасовано</h1>
-<p>Ви скасували оплату. Поверніться до бота щоб спробувати ще раз.</p>
-<a href="https://t.me/{BOT_USERNAME}">Повернутися до бота →</a></div></body></html>"""
+<body><div class="card"><div class="icon">↩️</div><h1>Оплата отменена</h1>
+<p>Ты отменил оплату. Вернись в бота, чтобы попробовать снова.</p>
+<a href="https://t.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
 
 
 def setup_webhook_server(bot: Bot) -> web.Application:

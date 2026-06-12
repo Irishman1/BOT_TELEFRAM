@@ -23,14 +23,14 @@ async def notify_expiring(bot: Bot, days: int):
         try:
             expires = datetime.fromisoformat(user["expires_at"])
             if days == 3:
-                emoji, text = "⚠️", f"Підписка закінчується через <b>3 дні</b> ({expires.strftime('%d.%m.%Y')})"
+                emoji, text = "⚠️", f"Подписка заканчивается через <b>3 дня</b> ({expires.strftime('%d.%m.%Y')})"
             else:
-                emoji, text = "🔴", f"Підписка закінчується <b>завтра</b> ({expires.strftime('%d.%m.%Y')})"
+                emoji, text = "🔴", f"Подписка заканчивается <b>завтра</b> ({expires.strftime('%d.%m.%Y')})"
 
             await bot.send_message(
                 user["tg_id"],
                 f"{emoji} {text}\n\n"
-                f"Щоб не втратити доступ до каналу — продовж підписку:\n/start",
+                f"Чтобы не потерять доступ к каналу — продли подписку:\n/start",
                 parse_mode="HTML"
             )
             await mark_notified(user["tg_id"], days)
@@ -57,9 +57,9 @@ async def kick_expired_users(bot: Bot):
             # Уведомляем
             await bot.send_message(
                 tg_id,
-                "❌ <b>Твоя підписка закінчилась</b>\n\n"
-                "Тебе видалено з каналу.\n\n"
-                "Щоб отримати доступ знову — оформи підписку:\n/start",
+                "❌ <b>Твоя подписка закончилась</b>\n\n"
+                "Ты удалён из канала.\n\n"
+                "Чтобы получить доступ снова — оформи подписку:\n/start",
                 parse_mode="HTML"
             )
             logger.info(f"Kicked expired user: {tg_id}")
@@ -73,13 +73,13 @@ async def daily_backup(bot: Bot):
     buy_clicks = await get_buy_clicks_count()
 
     text = (
-        f"🗄 <b>Щоденний бекап</b> — {datetime.now().strftime('%d.%m.%Y')}\n\n"
+        f"🗄 <b>Ежедневный бекап</b> — {datetime.now().strftime('%d.%m.%Y')}\n\n"
         f"📊 <b>Статистика</b>\n"
-        f"👥 Активних підписок: <b>{stats['active']}</b>\n"
-        f"👤 Всього користувачів: <b>{stats['total']}</b>\n"
-        f"💰 Дохід за місяць: <b>{stats['monthly_revenue']:.2f} €</b>\n"
-        f"⏳ Закінчується протягом 3 днів: <b>{stats['expiring_soon']}</b>\n"
-        f"🖱 Кліків по \"Оплатити\": <b>{buy_clicks}</b>"
+        f"👥 Активных подписок: <b>{stats['active']}</b>\n"
+        f"👤 Всего пользователей: <b>{stats['total']}</b>\n"
+        f"💰 Доход за месяц: <b>{stats['monthly_revenue']:.2f} €</b>\n"
+        f"⏳ Заканчивается в течение 3 дней: <b>{stats['expiring_soon']}</b>\n"
+        f"🖱 Кликов по \"Оплатить\": <b>{buy_clicks}</b>"
     )
 
     for admin_id in ADMIN_IDS:
@@ -119,7 +119,7 @@ async def start_scheduler(bot: Bot):
         id="notify_1d"
     )
 
-    # Щоденний бекап БД + статистика — о 8:00 за Чорногорією (9:00 Київ)
+    # Ежедневный бекап БД + статистика — в 8:00 по Черногории (9:00 Киев)
     scheduler.add_job(
         daily_backup, "cron", hour=9, minute=0,
         kwargs={"bot": bot},
