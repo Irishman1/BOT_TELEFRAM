@@ -19,8 +19,8 @@ GROUP_DESCRIPTION = "Опис — що отримає учасник"
 # Тарифи
 PLANS = {
     "1m": {"name": "1 місяць",  "days": 30,  "price": 5,  "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
-    "3m": {"name": "3 місяці",  "days": 90,  "price": 13, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
-    "6m": {"name": "6 місяців", "days": 180, "price": 25, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_6M", "")},
+    "3m": {"name": "3 місяці",  "days": 90,  "price": 15, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
+    "6m": {"name": "6 місяців", "days": 180, "price": 30, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_6M", "")},
 }
 
 # PayPal
