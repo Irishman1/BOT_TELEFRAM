@@ -62,6 +62,20 @@ async def send_tg(tg_id, text):
         await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
                      json={"chat_id": tg_id, "text": text, "parse_mode": "HTML"})
 
+
+async def create_invite_link():
+    import aiohttp, time
+    expire_date = int(time.time()) + 15 * 60
+    async with aiohttp.ClientSession() as s:
+        resp = await s.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/createChatInviteLink",
+            json={"chat_id": GROUP_ID, "member_limit": 1, "expire_date": expire_date}
+        )
+        data = await resp.json()
+        if data.get("ok"):
+            return data["result"]["invite_link"]
+    return None
+
 def is_logged(request):
     return request.cookies.get("admin_auth") == f"{ADMIN_LOGIN}:{ADMIN_PASSWORD}"
 
@@ -210,9 +224,29 @@ async def give_post(request):
     cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
     new_exp = (cur if cur > now else now) + timedelta(days=days)
     await db_exec("UPDATE users SET expires_at=?,plan='manual',is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),now.isoformat(),username))
-    try: await send_tg(u["tg_id"],f"🎁 Администратор предоставил доступ на <b>{days} дней</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>\n\n/getlink")
+    link = await create_invite_link()
+    try:
+        tg_msg = f"🎁 Администратор предоставил доступ на <b>{days} дней</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>"
+        if link:
+            tg_msg += f"\n\n🔗 <b>Ссылка на группу:</b>\n{link}\n\n⏱ Действует 15 минут, одноразовая."
+        await send_tg(u["tg_id"], tg_msg)
     except: pass
-    return await render("give.html", page="give", msg=f'<div class="alert alert-success">✅ @{username} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>', prefill="")
+    if link:
+        msg = (
+            f'<div class="alert alert-success">✅ @{username} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>'
+            f'<div style="margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;">'
+            f'<div style="font-size:13px;color:#166534;font-weight:600;margin-bottom:8px;">🔗 Одноразовая ссылка на группу (15 мин):</div>'
+            f'<div style="display:flex;gap:8px;align-items:center;">'
+            f'<input id="inv_link" value="{link}" readonly style="flex:1;padding:8px 10px;border:1px solid #ccc;border-radius:7px;font-size:13px;background:#fff;">'
+            f'<button onclick="navigator.clipboard.writeText(document.getElementById(\'inv_link\').value);this.textContent=\'✅\'" '
+            f'style="padding:8px 14px;background:#1D9E75;color:#fff;border:none;border-radius:7px;font-size:13px;cursor:pointer;">Копировать</button>'
+            f'</div>'
+            f'<div style="font-size:12px;color:#6b7280;margin-top:6px;">Ссылка уже отправлена пользователю в Telegram. Можно также передать вручную.</div>'
+            f'</div>'
+        )
+    else:
+        msg = f'<div class="alert alert-success">✅ @{username} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>'
+    return await render("give.html", page="give", msg=msg, prefill="")
 
 
 @require_login
