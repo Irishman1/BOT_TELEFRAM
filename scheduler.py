@@ -4,7 +4,7 @@ from aiogram.types import FSInputFile
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 
-from config import GROUP_ID, ADMIN_IDS
+from config import GROUP_ID, ADMIN_IDS, WEEKLY_ADMIN_IDS
 from database import (
     get_expiring_users, mark_notified,
     get_expired_users, deactivate_user,
@@ -95,6 +95,29 @@ async def daily_backup(bot: Bot):
             logger.warning(f"Failed to send daily backup to {admin_id}: {e}")
 
 
+async def weekly_stats(bot: Bot):
+    """Еженедельная статистика для дополнительных администраторов"""
+    if not WEEKLY_ADMIN_IDS:
+        return
+    stats = await get_stats()
+    buy_clicks = await get_buy_clicks_count()
+
+    text = (
+        f"📊 <b>Еженедельная статистика</b> — {datetime.now().strftime('%d.%m.%Y')}\n\n"
+        f"👥 Активных подписок: <b>{stats['active']}</b>\n"
+        f"👤 Всего пользователей: <b>{stats['total']}</b>\n"
+        f"💰 Доход за месяц: <b>{stats['monthly_revenue']:.2f} €</b>\n"
+        f"⏳ Заканчивается в течение 3 дней: <b>{stats['expiring_soon']}</b>\n"
+        f"🖱 Кликов по \"Оплатить\": <b>{buy_clicks}</b>"
+    )
+
+    for admin_id in WEEKLY_ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, text, parse_mode="HTML", disable_notification=True)
+        except Exception as e:
+            logger.warning(f"Failed to send weekly stats to {admin_id}: {e}")
+
+
 async def start_scheduler(bot: Bot):
     """Запускаем все задачи планировщика"""
 
@@ -124,6 +147,13 @@ async def start_scheduler(bot: Bot):
         daily_backup, "cron", hour=9, minute=0,
         kwargs={"bot": bot},
         id="daily_backup"
+    )
+
+    # Еженедельная статистика — каждый понедельник в 9:00 по Киеву
+    scheduler.add_job(
+        weekly_stats, "cron", day_of_week="mon", hour=9, minute=0,
+        kwargs={"bot": bot},
+        id="weekly_stats"
     )
 
     scheduler.start()
