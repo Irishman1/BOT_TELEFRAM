@@ -63,7 +63,8 @@ async def cmd_start(message: Message, bot: Bot):
         kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
-            f"🔑 Код участника: <code>{member_code}</code>\n\n" + WELCOME_TEXT
+            f"🔑 Код участника: <code>{member_code}</code>\n\n" + WELCOME_TEXT,
+            parse_mode="HTML"
         )
         await message.answer(
             f"Нажми кнопку ниже, чтобы оформить подписку:",
