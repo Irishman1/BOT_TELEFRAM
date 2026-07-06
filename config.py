@@ -8,6 +8,23 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token_here")
 GROUP_ID = int(os.getenv("GROUP_ID", "-100xxxxxxxxx"))
 ADMIN_IDS = list(map(int, os.getenv("ADMIN_IDS", "123456789").split(",")))
 
+
+def encode_id(tg_id: int) -> str:
+    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    result = ""
+    n = tg_id
+    while n:
+        result = chars[n % 36] + result
+        n //= 36
+    return result or "0"
+
+
+def decode_id(code: str):
+    try:
+        return int(code.upper(), 36)
+    except (ValueError, AttributeError):
+        return None
+
 # Server
 SERVER_URL = os.getenv("SERVER_URL", "https://your-app.railway.app")
 WEBHOOK_PATH = "/webhook/liqpay"

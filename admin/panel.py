@@ -18,6 +18,10 @@ BOT_TOKEN      = os.getenv("BOT_TOKEN", "")
 GROUP_ID       = os.getenv("GROUP_ID", "")
 
 PLANS = {"basic":"Базовый пакет","standard":"Стандартный пакет","manual":"Вручную"}
+
+import sys, os as _os
+sys.path.insert(0, _os.path.dirname(_os.path.dirname(__file__)))
+from config import encode_id, decode_id
 PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
@@ -222,6 +226,10 @@ async def give_post(request):
     reason = data.get("reason","gift")
     plan_key = (data.get("plan_key","manual:0") or "manual:0").split(":")[0]
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
+    if not u:
+        decoded = decode_id(username)
+        if decoded:
+            u = await db_one("SELECT * FROM users WHERE tg_id=?",(decoded,))
     if not u:
         return await render("give.html", page="give", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
     now = datetime.now()

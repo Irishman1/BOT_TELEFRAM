@@ -2,7 +2,7 @@
 <div class="card card-body" style="max-width:480px;">
   {{msg}}
   <form method="POST">
-    <div class="form-group"><label>Username</label><input type="text" name="username" value="{{prefill}}" placeholder="@username" required></div>
+    <div class="form-group"><label>Username или код участника</label><input type="text" name="username" value="{{prefill}}" placeholder="@username или AB4X9K" required></div>
     <div class="form-group">
       <label>Пакет</label>
       <select name="plan_key" id="plan_key" required onchange="applyPlan(this.value)" style="width:100%;padding:9px 12px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;background:#fff;margin-top:6px;">

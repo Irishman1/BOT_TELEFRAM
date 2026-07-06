@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
-from config import GROUP_ID, GROUP_NAME, SERVER_URL, PLANS, PAYMENT_PROVIDER, WELCOME_TEXT
+from config import GROUP_ID, GROUP_NAME, SERVER_URL, PLANS, PAYMENT_PROVIDER, WELCOME_TEXT, encode_id
 from database import (
     upsert_user, get_user, save_invite_link, get_invite_link,
     activate_subscription, save_pending_order, get_promo, log_buy_click,
@@ -40,6 +40,7 @@ async def cmd_start(message: Message, bot: Bot):
     )
 
     user = await get_user(tg_id)
+    member_code = encode_id(tg_id)
     if user and user["is_active"] and user["expires_at"]:
         expires   = datetime.fromisoformat(user["expires_at"])
         days_left = (expires - datetime.now()).days
@@ -48,6 +49,7 @@ async def cmd_start(message: Message, bot: Bot):
         kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
         await message.answer(
+            f"🔑 Код участника: <code>{member_code}</code>\n\n"
             f"👋 Привет, {name}!\n\n"
             f"✅ У тебя активная подписка\n"
             f"📅 Действует до: <b>{expires.strftime('%d.%m.%Y')}</b> (еще {days_left} дн.)\n\n"
@@ -60,7 +62,9 @@ async def cmd_start(message: Message, bot: Bot):
         kb.button(text="💳 Оплатить", callback_data="show_plans")
         kb.button(text="💬 Поддержка", callback_data="open_support")
         kb.adjust(1)
-        await message.answer(WELCOME_TEXT)
+        await message.answer(
+            f"🔑 Код участника: <code>{member_code}</code>\n\n" + WELCOME_TEXT
+        )
         await message.answer(
             f"Нажми кнопку ниже, чтобы оформить подписку:",
             reply_markup=kb.as_markup()
