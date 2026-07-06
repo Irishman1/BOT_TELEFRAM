@@ -7,7 +7,6 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token_here")
 GROUP_ID = int(os.getenv("GROUP_ID", "-100xxxxxxxxx"))
 ADMIN_IDS = list(map(int, os.getenv("ADMIN_IDS", "123456789").split(",")))
-WEEKLY_ADMIN_IDS = [int(x) for x in os.getenv("WEEKLY_ADMIN_IDS", "").split(",") if x.strip()]
 
 # Server
 SERVER_URL = os.getenv("SERVER_URL", "https://your-app.railway.app")
