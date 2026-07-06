@@ -16,11 +16,10 @@ WEBHOOK_PATH = "/webhook/liqpay"
 # Группа
 GROUP_NAME = "Сообщество для родителей детей с речевыми трудностями"
 
-# Тарифи
+# Тарифы
 PLANS = {
-    "1m": {"name": "1 месяц",   "days": 30,  "price": 5,  "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
-    "3m": {"name": "3 месяца",  "days": 90,  "price": 15, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
-    "6m": {"name": "6 месяцев", "days": 180, "price": 30, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_6M", "")},
+    "basic":    {"name": "Базовый пакет",    "days": 30, "price": 14.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
+    "standard": {"name": "Стандартный пакет","days": 30, "price": 24.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
 }
 
 # PayPal

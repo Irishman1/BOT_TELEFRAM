@@ -14,7 +14,7 @@ DB_PATH        = os.getenv("DB_PATH", "subscriptions.db")
 BOT_TOKEN      = os.getenv("BOT_TOKEN", "")
 GROUP_ID       = os.getenv("GROUP_ID", "")
 
-PLANS = {"1m":"1 месяц","3m":"3 месяца","1y":"1 год","manual":"Вручную"}
+PLANS = {"basic":"Базовый пакет","standard":"Стандартный пакет","manual":"Вручную"}
 PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
