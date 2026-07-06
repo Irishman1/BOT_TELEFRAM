@@ -554,7 +554,7 @@ async def _receipt_page_inner(request):
         return web.Response(text="Платёж не найден", status=404)
 
     paid_at = (p["paid_at"] or "")[:16].replace("T", " ")
-    name = p["full_name"] or "—"
+    full_name = p["full_name"] or "—"
     un = f'@{p["username"]}' if p["username"] else "—"
     plan = PLANS.get(p["plan"], p["plan"] or "—")
     amount = p["amount"]
@@ -569,7 +569,7 @@ async def _receipt_page_inner(request):
     return await render("receipt.html", page="payments",
         order_id=p["order_id"],
         paid_at=paid_at,
-        name=name,
+        name=full_name,
         username=un,
         tg_id=p["tg_id"],
         plan=plan,
