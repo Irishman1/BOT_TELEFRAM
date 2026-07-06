@@ -216,6 +216,7 @@ async def give_post(request):
     data = await request.post()
     username = data.get("username","").lstrip("@")
     days = int(data.get("days",30))
+    reason = data.get("reason","gift")
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
     if not u:
         return await render("give.html", page="give", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
@@ -226,7 +227,10 @@ async def give_post(request):
     await db_exec("UPDATE users SET expires_at=?,plan='manual',is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),now.isoformat(),username))
     link = await create_invite_link()
     try:
-        tg_msg = f"🎁 Администратор предоставил доступ на <b>{days} дней</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>"
+        if reason == "card":
+            tg_msg = f"✅ <b>Оплата подтверждена!</b>\n📅 Доступ до: <b>{new_exp.strftime('%d.%m.%Y')}</b>"
+        else:
+            tg_msg = f"🎁 Вам предоставлен бесплатный доступ на <b>{days} дней</b>!\n📅 До: <b>{new_exp.strftime('%d.%m.%Y')}</b>"
         if link:
             tg_msg += f"\n\n🔗 <b>Ссылка на группу:</b>\n{link}\n\n⏱ Действует 15 минут, одноразовая."
         await send_tg(u["tg_id"], tg_msg)

@@ -3,6 +3,19 @@
   {{msg}}
   <form method="POST">
     <div class="form-group"><label>Username</label><input type="text" name="username" value="{{prefill}}" placeholder="@username" required></div>
+    <div class="form-group">
+      <label>Причина</label>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;font-weight:400;">
+          <input type="radio" name="reason" value="gift" required style="accent-color:#1D9E75;width:16px;height:16px;">
+          🎁 Подарок на 30 дней
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;font-weight:400;">
+          <input type="radio" name="reason" value="card" required style="accent-color:#1D9E75;width:16px;height:16px;">
+          💳 Оплатил на карту
+        </label>
+      </div>
+    </div>
     <div class="form-group"><label>Количество дней</label><input type="number" name="days" value="30" min="1" required></div>
     <button class="btn btn-primary" type="submit">Выдать доступ</button>
   </form>
