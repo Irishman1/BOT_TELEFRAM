@@ -27,16 +27,16 @@ async def cmd_admin(message: Message):
     stats = await get_stats()
 
     await message.answer(
-        f"🛠 <b>Адмін-панель</b>\n\n"
-        f"👥 Активних підписок: <b>{stats['active']}</b>\n"
-        f"📊 Всього користувачів: <b>{stats['total']}</b>\n"
-        f"⚠️ Закінчується скоро: <b>{stats['expiring_soon']}</b>\n"
-        f"💰 Дохід цього місяця: <b>{stats['monthly_revenue']:.0f} грн</b>\n\n"
-        f"<b>Команди:</b>\n"
-        f"/find @username — знайти користувача\n"
-        f"/give @username 30 — дати доступ на N днів\n"
-        f"/kick @username — видалити користувача\n"
-        f"/broadcast — розіслати повідомлення всім",
+        f"🛠 <b>Панель администратора</b>\n\n"
+        f"👥 Активных подписок: <b>{stats['active']}</b>\n"
+        f"📊 Всего пользователей: <b>{stats['total']}</b>\n"
+        f"⚠️ Заканчивается скоро: <b>{stats['expiring_soon']}</b>\n"
+        f"💰 Доход за месяц: <b>{stats['monthly_revenue']:.2f} €</b>\n\n"
+        f"<b>Команды:</b>\n"
+        f"/find @username — найти пользователя\n"
+        f"/give @username 30 — выдать доступ на N дней\n"
+        f"/kick @username — удалить пользователя\n"
+        f"/broadcast — разослать сообщение всем",
         parse_mode="HTML"
     )
 
@@ -50,12 +50,12 @@ async def cmd_find(message: Message):
 
     parts = message.text.split()
     if len(parts) < 2:
-        await message.answer("Використання: /find @username")
+        await message.answer("Использование: /find @username")
         return
 
     user = await find_user_by_username(parts[1])
     if not user:
-        await message.answer("❌ Користувача не знайдено")
+        await message.answer("❌ Пользователь не найден")
         return
 
     expires = datetime.fromisoformat(user["expires_at"]) if user["expires_at"] else None
@@ -67,12 +67,12 @@ async def cmd_find(message: Message):
 
     await message.answer(
         f"👤 <b>@{user['username']}</b> (ID: {user['tg_id']})\n"
-        f"Ім'я: {user['full_name']}\n"
-        f"Підписка: {status}\n"
+        f"Имя: {user['full_name']}\n"
+        f"Подписка: {status}\n"
         f"Тариф: {plan.get('name', user['plan'] or '—')}\n"
-        f"Діє до: {expires_str} (ще {days_left} дн.)\n\n"
-        f"/give @{user['username']} 30 — продовжити\n"
-        f"/kick @{user['username']} — видалити",
+        f"Действует до: {expires_str} (ещё {days_left} дн.)\n\n"
+        f"/give @{user['username']} 30 — продлить\n"
+        f"/kick @{user['username']} — удалить",
         parse_mode="HTML"
     )
 
@@ -86,37 +86,35 @@ async def cmd_give(message: Message, bot: Bot):
 
     parts = message.text.split()
     if len(parts) < 3:
-        await message.answer("Використання: /give @username кількість_днів")
+        await message.answer("Использование: /give @username количество_дней")
         return
 
     username, days_str = parts[1], parts[2]
     try:
         days = int(days_str)
     except ValueError:
-        await message.answer("❌ Введи число днів")
+        await message.answer("❌ Введи число дней")
         return
 
     user = await find_user_by_username(username)
     if not user:
-        await message.answer("❌ Користувача не знайдено")
+        await message.answer("❌ Пользователь не найден")
         return
 
     new_expiry = await activate_subscription(user["tg_id"], "manual", days)
 
-    # Уведомляем пользователя
     try:
         await bot.send_message(
             user["tg_id"],
-            f"🎁 Адміністратор надав тобі доступ на <b>{days} днів</b>!\n"
-            f"📅 Підписка діє до: <b>{new_expiry.strftime('%d.%m.%Y')}</b>\n\n"
-            f"Отримай посилання на канал: /getlink",
+            f"🎁 Администратор предоставил тебе доступ на <b>{days} дней</b>!\n"
+            f"📅 Подписка действует до: <b>{new_expiry.strftime('%d.%m.%Y')}</b>",
             parse_mode="HTML"
         )
     except Exception:
         pass
 
     await message.answer(
-        f"✅ Користувачу @{username} надано доступ на {days} днів\n"
+        f"✅ Пользователю @{username} выдан доступ на {days} дней\n"
         f"До: {new_expiry.strftime('%d.%m.%Y')}"
     )
 
@@ -130,12 +128,12 @@ async def cmd_kick(message: Message, bot: Bot):
 
     parts = message.text.split()
     if len(parts) < 2:
-        await message.answer("Використання: /kick @username")
+        await message.answer("Использование: /kick @username")
         return
 
     user = await find_user_by_username(parts[1])
     if not user:
-        await message.answer("❌ Користувача не знайдено")
+        await message.answer("❌ Пользователь не найден")
         return
 
     await deactivate_user(user["tg_id"])
@@ -144,18 +142,18 @@ async def cmd_kick(message: Message, bot: Bot):
         await bot.ban_chat_member(chat_id=GROUP_ID, user_id=user["tg_id"])
         await bot.unban_chat_member(chat_id=GROUP_ID, user_id=user["tg_id"])
     except Exception as e:
-        await message.answer(f"⚠️ Не вдалось кікнути з каналу: {e}")
+        await message.answer(f"⚠️ Не удалось кикнуть из канала: {e}")
         return
 
     try:
         await bot.send_message(
             user["tg_id"],
-            "❌ Твій доступ до каналу було скасовано адміністратором."
+            "❌ Твой доступ к каналу отменён администратором."
         )
     except Exception:
         pass
 
-    await message.answer(f"✅ @{parts[1]} видалено з каналу")
+    await message.answer(f"✅ @{parts[1]} удалён из канала")
 
 
 # ─── /broadcast ──────────────────────────────────────────────
@@ -165,12 +163,11 @@ async def cmd_broadcast(message: Message, bot: Bot):
     if not is_admin(message.from_user.id):
         return
 
-    # Текст после команды
     text = message.text.replace("/broadcast", "").strip()
     if not text:
         await message.answer(
-            "Використання:\n/broadcast Текст повідомлення\n\n"
-            "Повідомлення буде надіслано всім активним підписникам."
+            "Использование:\n/broadcast Текст сообщения\n\n"
+            "Сообщение будет отправлено всем активным подписчикам."
         )
         return
 
@@ -185,7 +182,7 @@ async def cmd_broadcast(message: Message, bot: Bot):
             failed += 1
 
     await message.answer(
-        f"📨 Розсилка завершена\n"
-        f"✅ Надіслано: {sent}\n"
-        f"❌ Помилок: {failed}"
+        f"📨 Рассылка завершена\n"
+        f"✅ Отправлено: {sent}\n"
+        f"❌ Ошибок: {failed}"
     )

@@ -37,7 +37,7 @@ async def create_order(amount: float, currency: str, order_id: str, return_url: 
                         "currency_code": currency,
                         "value": f"{amount:.2f}"
                     },
-                    "description": "Підписка на групу"
+                    "description": "Подписка на группу"
                 }],
                 "application_context": {
                     "return_url": return_url,
