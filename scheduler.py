@@ -142,11 +142,16 @@ async def start_scheduler(bot: Bot):
         id="notify_1d"
     )
 
-    # Ежедневный бекап БД + статистика — в 8:00 по Черногории (9:00 Киев)
+    # Бекап БД + статистика — дважды в день: 9:00 и 21:00 по Киеву
     scheduler.add_job(
         daily_backup, "cron", hour=9, minute=0,
         kwargs={"bot": bot},
-        id="daily_backup"
+        id="daily_backup_morning"
+    )
+    scheduler.add_job(
+        daily_backup, "cron", hour=21, minute=0,
+        kwargs={"bot": bot},
+        id="daily_backup_evening"
     )
 
     # Еженедельная статистика — каждый понедельник в 9:00 по Киеву
