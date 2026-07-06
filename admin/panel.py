@@ -22,10 +22,10 @@ PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 
-async def render(name, page="", **ctx):
+async def render(template, page="", **ctx):
     with open(os.path.join(TMPL_DIR, "base.html"), encoding="utf-8") as f:
         base = f.read()
-    with open(os.path.join(TMPL_DIR, name), encoding="utf-8") as f:
+    with open(os.path.join(TMPL_DIR, template), encoding="utf-8") as f:
         content = f.read()
     for k, v in ctx.items():
         content = content.replace(f"{{{{{k}}}}}", str(v) if v is not None else "")
