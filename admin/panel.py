@@ -1,7 +1,10 @@
 import os
+import logging
 import aiosqlite
 from datetime import datetime, timedelta
 from aiohttp import web
+
+logger = logging.getLogger(__name__)
 from database import (
     get_all_promos, create_promo, toggle_promo, delete_promo, get_buy_clicks_count,
     get_clicks_and_payments_by_month, get_unread_support_count, get_support_messages,
@@ -533,6 +536,14 @@ async def payments_page(request):
 
 @require_login
 async def receipt_page(request):
+    try:
+        return await _receipt_page_inner(request)
+    except Exception as e:
+        logger.exception(f"receipt_page error: {e}")
+        return web.Response(text=f"Ошибка: {e}", status=500)
+
+
+async def _receipt_page_inner(request):
     order_id = request.match_info["order_id"]
     p = await db_one("""
         SELECT p.*, u.username, u.full_name, u.tg_id as utg
