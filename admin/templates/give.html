@@ -4,11 +4,20 @@
   <form method="POST">
     <div class="form-group"><label>Username</label><input type="text" name="username" value="{{prefill}}" placeholder="@username" required></div>
     <div class="form-group">
+      <label>Пакет</label>
+      <select name="plan_key" id="plan_key" required onchange="applyPlan(this.value)" style="width:100%;padding:9px 12px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;background:#fff;margin-top:6px;">
+        <option value="" disabled selected>— выбери пакет —</option>
+        <option value="basic:30">Базовый пакет — €14.99 / 30 дней</option>
+        <option value="standard:30">Стандартный пакет — €24.99 / 30 дней</option>
+        <option value="manual:0">Вручную (указать дни)</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>Причина</label>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;font-weight:400;">
           <input type="radio" name="reason" value="gift" required style="accent-color:#1D9E75;width:16px;height:16px;">
-          🎁 Подарок на 30 дней
+          🎁 Подарок
         </label>
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;font-weight:400;">
           <input type="radio" name="reason" value="card" required style="accent-color:#1D9E75;width:16px;height:16px;">
@@ -16,7 +25,17 @@
         </label>
       </div>
     </div>
-    <div class="form-group"><label>Количество дней</label><input type="number" name="days" value="30" min="1" required></div>
+    <div class="form-group"><label>Количество дней</label><input type="number" id="days_input" name="days" value="30" min="1" required></div>
     <button class="btn btn-primary" type="submit">Выдать доступ</button>
   </form>
 </div>
+<script>
+function applyPlan(val) {
+  if (!val) return;
+  var parts = val.split(':');
+  var days = parseInt(parts[1]);
+  var input = document.getElementById('days_input');
+  if (days > 0) { input.value = days; input.readOnly = true; }
+  else { input.value = ''; input.readOnly = false; input.focus(); }
+}
+</script>

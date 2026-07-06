@@ -217,6 +217,7 @@ async def give_post(request):
     username = data.get("username","").lstrip("@")
     days = int(data.get("days",30))
     reason = data.get("reason","gift")
+    plan_key = (data.get("plan_key","manual:0") or "manual:0").split(":")[0]
     u = await db_one("SELECT * FROM users WHERE username=?",(username,))
     if not u:
         return await render("give.html", page="give", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
@@ -224,7 +225,7 @@ async def give_post(request):
     exp = u.get("expires_at")
     cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
     new_exp = (cur if cur > now else now) + timedelta(days=days)
-    await db_exec("UPDATE users SET expires_at=?,plan='manual',is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),now.isoformat(),username))
+    await db_exec("UPDATE users SET expires_at=?,plan=?,is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),plan_key,now.isoformat(),username))
     link = await create_invite_link()
     try:
         if reason == "card":
