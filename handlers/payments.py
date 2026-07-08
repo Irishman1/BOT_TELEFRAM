@@ -3,7 +3,7 @@ from aiohttp import web
 from aiogram import Bot
 from datetime import datetime, timedelta
 
-from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME
+from config import PLANS, GROUP_ID, WEBHOOK_PATH, BOT_USERNAME, ADMIN_IDS
 from database import (
     get_pending_order, delete_pending_order,
     payment_exists, save_payment,
@@ -222,7 +222,9 @@ async def whop_webhook(request: web.Request) -> web.Response:
     payload = data.get("data", {}) or {}
     metadata = payload.get("metadata", {}) or {}
     order_id = metadata.get("order_id")
+    whop_payment_id_for_alert = str(payload.get("id", ""))
     if not order_id:
+        await _alert_unmatched_payment(bot, whop_payment_id_for_alert, "нет order_id в metadata")
         return web.Response(status=200)
 
     if await payment_exists(order_id):
@@ -230,11 +232,30 @@ async def whop_webhook(request: web.Request) -> web.Response:
 
     order = await get_pending_order(order_id)
     if not order:
+        await _alert_unmatched_payment(bot, whop_payment_id_for_alert, f"заказ {order_id} не найден в pending_orders")
         return web.Response(status=200)
 
     whop_payment_id = str(payload.get("id", ""))
     await _finalize_order(bot, order, whop_payment_id)
     return web.Response(status=200)
+
+
+async def _alert_unmatched_payment(bot: Bot, payment_id: str, reason: str):
+    """Гроші списані, але не вдалось прив'язати до замовлення — сповіщаємо адміна вручну розібратись"""
+    logger.error(f"Whop payment {payment_id} could not be matched to an order: {reason}")
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(
+                admin_id,
+                f"⚠️ <b>Внимание! Whop-платёж не привязан к заказу</b>\n\n"
+                f"Payment ID: <code>{payment_id}</code>\n"
+                f"Причина: {reason}\n\n"
+                f"Деньги списаны с клиента, но доступ не выдан автоматически. "
+                f"Проверь в Whop дашборде и выдай доступ вручную через админку.",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Failed to alert admin {admin_id}: {e}")
 
 
 async def _notify_payment_failed(bot: Bot, tg_id: int):
