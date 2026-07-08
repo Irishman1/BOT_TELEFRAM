@@ -55,8 +55,11 @@ def verify_signature(raw_body: bytes, webhook_id: str, timestamp: str, signature
 
     secret = WHOP_WEBHOOK_SECRET
     if secret.startswith("whsec_"):
-        secret = secret[len("whsec_"):]
-    secret_bytes = base64.b64decode(secret + "==")
+        secret_bytes = base64.b64decode(secret[len("whsec_"):] + "==")
+    elif secret.startswith("ws_"):
+        secret_bytes = bytes.fromhex(secret[len("ws_"):])
+    else:
+        secret_bytes = base64.b64decode(secret + "==")
 
     signed_content = f"{webhook_id}.{timestamp}.{raw_body.decode('utf-8')}"
     expected_sig = hmac.new(secret_bytes, signed_content.encode("utf-8"), hashlib.sha256).digest()
