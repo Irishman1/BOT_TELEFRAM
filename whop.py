@@ -10,6 +10,35 @@ WHOP_WEBHOOK_SECRET  = os.getenv("WHOP_WEBHOOK_SECRET", "")
 BASE_URL = "https://api.whop.com/api/v1"
 
 
+async def create_discounted_plan(product_id: str, company_id: str, price: float, currency: str = "eur") -> str:
+    """Створює приховий одноразовий план з точною ціною (для застосування знижки по промокоду)"""
+    if not WHOP_API_KEY:
+        raise Exception("Whop: не задано WHOP_API_KEY")
+    if not product_id or not company_id:
+        raise Exception("Whop: не задано product_id/company_id для створення знижкового плану")
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {WHOP_API_KEY}",
+    }
+    payload = {
+        "company_id": company_id,
+        "product_id": product_id,
+        "plan_type": "one_time",
+        "initial_price": round(price, 2),
+        "currency": currency,
+        "visibility": "hidden",
+        "unlimited_stock": True,
+    }
+
+    async with aiohttp.ClientSession() as s:
+        r = await s.post(f"{BASE_URL}/plans", headers=headers, json=payload)
+        data = await r.json()
+        if "id" not in data:
+            raise Exception(f"Whop error creating discounted plan: {data}")
+        return data["id"]
+
+
 async def create_checkout(plan_id: str, order_id: str, tg_id: int, plan_key: str, redirect_url: str = None) -> dict:
     """Створює checkout-сесію Whop і повертає {"id":..., "url":...}"""
     if not WHOP_API_KEY:

@@ -181,10 +181,19 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
         provider_name = "Lemon Squeezy"
         button_text = f"💳 Оплатить {price} € картой"
     elif PAYMENT_PROVIDER == "whop":
-        from whop import create_checkout
+        from whop import create_checkout, create_discounted_plan
+        from config import WHOP_COMPANY_ID
         try:
+            whop_plan_id = plan["whop_plan_id"]
+            if discount:
+                whop_plan_id = await create_discounted_plan(
+                    product_id=plan["whop_product_id"],
+                    company_id=WHOP_COMPANY_ID,
+                    price=price,
+                    currency=plan["currency"].lower(),
+                )
             result = await create_checkout(
-                plan_id=plan["whop_plan_id"],
+                plan_id=whop_plan_id,
                 order_id=order_id,
                 tg_id=tg_id,
                 plan_key=plan_key,
