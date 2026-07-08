@@ -205,6 +205,8 @@ async def whop_webhook(request: web.Request) -> web.Response:
     webhook_id    = request.headers.get("webhook-id", "")
     timestamp     = request.headers.get("webhook-timestamp", "")
     signature     = request.headers.get("webhook-signature", "")
+    logger.info(f"Whop webhook DEBUG: headers={dict(request.headers)}")
+    logger.info(f"Whop webhook DEBUG: id={webhook_id!r} ts={timestamp!r} sig={signature!r} body={raw!r}")
     if not verify_signature(raw, webhook_id, timestamp, signature):
         logger.warning("Whop webhook: invalid signature")
         return web.Response(status=401)
