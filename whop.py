@@ -53,24 +53,22 @@ def verify_signature(raw_body: bytes, webhook_id: str, timestamp: str, signature
     if not WHOP_WEBHOOK_SECRET or not signature or not webhook_id or not timestamp:
         return False
 
-    signed_content = f"{webhook_id}.{timestamp}.{raw_body.decode('utf-8')}"
-
     secret = WHOP_WEBHOOK_SECRET
     if secret.startswith("whsec_"):
         secret = secret[len("whsec_"):]
-    if secret.startswith("ws_"):
-        secret = secret[len("ws_"):]
-    try:
-        secret_bytes = base64.b64decode(secret)
-    except Exception:
-        secret_bytes = secret.encode("utf-8")
+    secret_bytes = base64.b64decode(secret + "==")
 
-    expected = base64.b64encode(
-        hmac.new(secret_bytes, signed_content.encode("utf-8"), hashlib.sha256).digest()
-    ).decode("utf-8")
+    signed_content = f"{webhook_id}.{timestamp}.{raw_body.decode('utf-8')}"
+    expected_sig = hmac.new(secret_bytes, signed_content.encode("utf-8"), hashlib.sha256).digest()
 
     for part in signature.split(" "):
-        candidate = part.split(",", 1)[-1]
-        if hmac.compare_digest(candidate, expected):
+        version, _, sig_b64 = part.partition(",")
+        if version != "v1" or not sig_b64:
+            continue
+        try:
+            sig_bytes = base64.b64decode(sig_b64)
+        except Exception:
+            continue
+        if hmac.compare_digest(expected_sig, sig_bytes):
             return True
     return False
