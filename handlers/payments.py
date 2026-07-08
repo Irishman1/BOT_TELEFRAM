@@ -215,8 +215,8 @@ async def whop_webhook(request: web.Request) -> web.Response:
     except Exception:
         return web.Response(status=400)
 
-    event_type = data.get("type", "") or data.get("action", "")
-    if event_type != "payment_succeeded":
+    event_type = data.get("type", "")
+    if event_type != "payment.succeeded":
         return web.Response(status=200)
 
     payload = data.get("data", {}) or {}
