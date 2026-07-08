@@ -76,7 +76,7 @@ async def _finalize_order(bot: Bot, order: dict, paypal_token: str, actual_amoun
     except Exception as e:
         logger.error(f"Telegram message error: {e}")
 
-    logger.info(f"PayPal payment captured: order={order_id} tg_id={tg_id}")
+    logger.info(f"Payment captured ({provider}): order={order_id} tg_id={tg_id}")
     return True
 
 
