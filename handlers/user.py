@@ -86,9 +86,9 @@ async def show_plans(callback: CallbackQuery, state: FSMContext):
         price = plan["price"]
         if discount:
             price = round(price * (100 - discount) / 100, 2)
-            text = f"💳 {plan['name']} — {price} € (было {plan['price']} €)"
+            text = f"💳 {plan['name']} — {price} € (было {plan['price']} €) / {plan['days']} дн."
         else:
-            text = f"💳 {plan['name']} — {price} €"
+            text = f"💳 {plan['name']} — {price} € / {plan['days']} дн."
         kb.button(text=text, callback_data=f"buy:{key}")
     if not promo_code:
         kb.button(text="🎟 У меня есть промокод", callback_data="enter_promo")
@@ -133,7 +133,7 @@ async def process_promo(message: Message, state: FSMContext):
     kb = InlineKeyboardBuilder()
     for key, plan in PLANS.items():
         price = round(plan["price"] * (100 - promo["discount"]) / 100, 2)
-        kb.button(text=f"💳 {plan['name']} — {price} € (было {plan['price']} €)", callback_data=f"buy:{key}")
+        kb.button(text=f"💳 {plan['name']} — {price} € (было {plan['price']} €) / {plan['days']} дн.", callback_data=f"buy:{key}")
     kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
 
