@@ -1,9 +1,15 @@
 import os
 import aiosqlite
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 DB_PATH = os.getenv("DB_PATH", "subscriptions.db")
+KYIV_TZ = ZoneInfo("Europe/Kyiv")
+
+
+def now_kyiv() -> datetime:
+    return datetime.now(KYIV_TZ).replace(tzinfo=None)
 
 
 async def init_db():
@@ -31,7 +37,8 @@ async def init_db():
                 paid_at         DATETIME,
                 status          TEXT,
                 paypal_order_id TEXT,
-                promo_code      TEXT
+                promo_code      TEXT,
+                provider        TEXT
             )
         """)
         # Міграція для старих БД без нових колонок
@@ -41,6 +48,8 @@ async def init_db():
             await db.execute("ALTER TABLE payments ADD COLUMN paypal_order_id TEXT")
         if "promo_code" not in cols:
             await db.execute("ALTER TABLE payments ADD COLUMN promo_code TEXT")
+        if "provider" not in cols:
+            await db.execute("ALTER TABLE payments ADD COLUMN provider TEXT")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS invite_links (
                 tg_id      INTEGER PRIMARY KEY,
@@ -225,12 +234,12 @@ async def find_user_by_username(username: str) -> Optional[dict]:
 # ─── Payments ────────────────────────────────────────────────
 
 async def save_payment(order_id: str, tg_id: int, amount: float, plan: str, status: str,
-                        paypal_order_id: str = None, promo_code: str = None):
+                        paypal_order_id: str = None, promo_code: str = None, provider: str = None):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
-            INSERT OR REPLACE INTO payments (order_id, tg_id, amount, plan, paid_at, status, paypal_order_id, promo_code)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (order_id, tg_id, amount, plan, datetime.now().isoformat(), status, paypal_order_id, promo_code))
+            INSERT OR REPLACE INTO payments (order_id, tg_id, amount, plan, paid_at, status, paypal_order_id, promo_code, provider)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (order_id, tg_id, amount, plan, now_kyiv().isoformat(), status, paypal_order_id, promo_code, provider))
         await db.commit()
 
 

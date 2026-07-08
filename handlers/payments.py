@@ -14,7 +14,7 @@ from database import (
 logger = logging.getLogger(__name__)
 
 
-async def _finalize_order(bot: Bot, order: dict, paypal_token: str) -> bool:
+async def _finalize_order(bot: Bot, order: dict, paypal_token: str, actual_amount: float = None, provider: str = None) -> bool:
     """Зараховує оплату: підписка + інвайт + повідомлення. Повертає True при успіху."""
     order_id   = order["order_id"]
     tg_id      = order["tg_id"]
@@ -24,16 +24,21 @@ async def _finalize_order(bot: Bot, order: dict, paypal_token: str) -> bool:
     if not plan:
         return False
 
-    price = plan["price"]
     if promo_code:
         from database import get_promo
         promo = await get_promo(promo_code)
         if promo:
-            price = round(price * (100 - promo["discount"]) / 100, 2)
             await use_promo(promo_code)
 
+    if actual_amount is not None:
+        price = actual_amount
+    elif promo_code and promo:
+        price = round(plan["price"] * (100 - promo["discount"]) / 100, 2)
+    else:
+        price = plan["price"]
+
     await save_payment(order_id, tg_id, price, plan_key, "success",
-                        paypal_order_id=paypal_token, promo_code=promo_code)
+                        paypal_order_id=paypal_token, promo_code=promo_code, provider=provider)
     await delete_pending_order(order_id)
     new_expiry = await activate_subscription(tg_id, plan_key, plan["days"])
 
@@ -110,7 +115,7 @@ async def paypal_success(request: web.Request) -> web.Response:
         await _notify_payment_failed(bot, tg_id)
         return web.Response(text=_error_html(), content_type="text/html")
 
-    ok = await _finalize_order(bot, order, paypal_token)
+    ok = await _finalize_order(bot, order, paypal_token, provider="paypal")
     if not ok:
         return web.Response(text=_error_html(), content_type="text/html")
 
@@ -149,7 +154,7 @@ async def paypal_webhook(request: web.Request) -> web.Response:
             return web.Response(status=200)
 
         if captured:
-            await _finalize_order(bot, order, paypal_order_id)
+            await _finalize_order(bot, order, paypal_order_id, provider="paypal")
 
     return web.Response(status=200)
 
@@ -192,7 +197,7 @@ async def lemonsqueezy_webhook(request: web.Request) -> web.Response:
     if status != "paid":
         return web.Response(status=200)
 
-    await _finalize_order(bot, order, ls_order_id)
+    await _finalize_order(bot, order, ls_order_id, provider="lemonsqueezy")
     return web.Response(status=200)
 
 
@@ -236,7 +241,8 @@ async def whop_webhook(request: web.Request) -> web.Response:
         return web.Response(status=200)
 
     whop_payment_id = str(payload.get("id", ""))
-    await _finalize_order(bot, order, whop_payment_id)
+    actual_amount = payload.get("total")
+    await _finalize_order(bot, order, whop_payment_id, actual_amount=actual_amount, provider="whop")
     return web.Response(status=200)
 
 

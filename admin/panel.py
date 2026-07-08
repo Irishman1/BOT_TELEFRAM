@@ -569,14 +569,18 @@ async def _receipt_page_inner(request):
     amount_str = f"{amount:.2f}".rstrip("0").rstrip(".") if amount is not None else "0"
     paypal_oid = p.get("paypal_order_id") or "—"
     promo = p.get("promo_code") or "—"
+    provider = p.get("provider") or "paypal"
+    provider_names = {"paypal": "PayPal", "lemonsqueezy": "Lemon Squeezy", "whop": "Whop"}
+    provider_name = provider_names.get(provider, provider)
     paypal_link = ""
-    if p.get("paypal_order_id"):
+    if provider == "paypal" and p.get("paypal_order_id"):
         mode = "sandbox." if PAYPAL_MODE == "sandbox" else ""
         paypal_link = f'<a href="https://www.{mode}paypal.com/activity/payment/{p["paypal_order_id"]}" target="_blank" class="btn-sm">Открыть в PayPal →</a>'
 
     return await render("receipt.html", page="payments",
         order_id=p["order_id"],
         paid_at=paid_at,
+        provider_name=provider_name,
         name=full_name,
         username=un,
         tg_id=p["tg_id"],
