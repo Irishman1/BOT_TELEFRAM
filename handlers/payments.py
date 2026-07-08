@@ -196,6 +196,47 @@ async def lemonsqueezy_webhook(request: web.Request) -> web.Response:
     return web.Response(status=200)
 
 
+async def whop_webhook(request: web.Request) -> web.Response:
+    """Webhook від Whop — обробляє оплату замовлення"""
+    bot: Bot = request.app["bot"]
+    raw = await request.read()
+
+    from whop import verify_signature
+    webhook_id    = request.headers.get("webhook-id", "")
+    timestamp     = request.headers.get("webhook-timestamp", "")
+    signature     = request.headers.get("webhook-signature", "")
+    if not verify_signature(raw, webhook_id, timestamp, signature):
+        logger.warning("Whop webhook: invalid signature")
+        return web.Response(status=401)
+
+    import json
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return web.Response(status=400)
+
+    event_type = data.get("type", "") or data.get("action", "")
+    if event_type != "payment_succeeded":
+        return web.Response(status=200)
+
+    payload = data.get("data", {}) or {}
+    metadata = payload.get("metadata", {}) or {}
+    order_id = metadata.get("order_id")
+    if not order_id:
+        return web.Response(status=200)
+
+    if await payment_exists(order_id):
+        return web.Response(status=200)
+
+    order = await get_pending_order(order_id)
+    if not order:
+        return web.Response(status=200)
+
+    whop_payment_id = str(payload.get("id", ""))
+    await _finalize_order(bot, order, whop_payment_id)
+    return web.Response(status=200)
+
+
 async def _notify_payment_failed(bot: Bot, tg_id: int):
     """Повідомляємо юзера що оплата не пройшла, з можливістю спробувати ще раз"""
     try:
@@ -256,4 +297,5 @@ def setup_webhook_server(bot: Bot) -> web.Application:
     app.router.add_get("/payment/cancel",    paypal_cancel)
     app.router.add_post("/payment/webhook",  paypal_webhook)
     app.router.add_post("/payment/lemonsqueezy/webhook", lemonsqueezy_webhook)
+    app.router.add_post("/webhook/whop", whop_webhook)
     return app

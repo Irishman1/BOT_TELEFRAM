@@ -34,8 +34,8 @@ GROUP_NAME = "Сообщество для родителей детей с ре�
 
 # Тарифы
 PLANS = {
-    "basic":    {"name": "Базовый пакет",    "days": 30, "price": 14.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", "")},
-    "standard": {"name": "Стандартный пакет","days": 30, "price": 24.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", "")},
+    "basic":    {"name": "Базовый пакет",    "days": 30, "price": 14.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", ""), "whop_plan_id": os.getenv("WHOP_PLAN_BASIC", "")},
+    "standard": {"name": "Стандартный пакет","days": 30, "price": 24.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", ""), "whop_plan_id": os.getenv("WHOP_PLAN_STANDARD", "")},
 }
 
 # PayPal

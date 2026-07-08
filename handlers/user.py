@@ -180,6 +180,23 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
         provider_name = "Lemon Squeezy"
         button_text = f"💳 Оплатить {price} € картой"
+    elif PAYMENT_PROVIDER == "whop":
+        from whop import create_checkout
+        try:
+            result = await create_checkout(
+                plan_id=plan["whop_plan_id"],
+                order_id=order_id,
+                tg_id=tg_id,
+                plan_key=plan_key,
+                redirect_url=return_url,
+            )
+            pay_url = result["url"]
+        except Exception as e:
+            await callback.answer(f"Ошибка: {e}", show_alert=True)
+            return
+
+        provider_name = "Whop"
+        button_text = f"💳 Оплатить {price} € картой"
     else:
         # Генерируем PayPal ссылку
         from paypal import create_order
