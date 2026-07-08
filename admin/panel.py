@@ -21,7 +21,7 @@ PLANS = {"basic":"Базовый пакет","standard":"Стандартный 
 
 import sys, os as _os
 sys.path.insert(0, _os.path.dirname(_os.path.dirname(__file__)))
-from config import encode_id, decode_id
+from config import encode_id, decode_id, PAYMENT_PROVIDER
 PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")
 TMPL_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
@@ -569,7 +569,7 @@ async def _receipt_page_inner(request):
     amount_str = f"{amount:.2f}".rstrip("0").rstrip(".") if amount is not None else "0"
     paypal_oid = p.get("paypal_order_id") or "—"
     promo = p.get("promo_code") or "—"
-    provider = p.get("provider") or "paypal"
+    provider = p.get("provider") or PAYMENT_PROVIDER
     provider_names = {"paypal": "PayPal", "lemonsqueezy": "Lemon Squeezy", "whop": "Whop"}
     provider_name = provider_names.get(provider, provider)
     paypal_link = ""
