@@ -34,8 +34,8 @@ GROUP_NAME = "Сообщество для родителей детей с ре�
 
 # Тарифы
 PLANS = {
-    "basic":    {"name": "Базовый пакет",    "days": 30, "price": 14.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_1M", ""), "whop_plan_id": os.getenv("WHOP_PLAN_BASIC", ""), "whop_product_id": os.getenv("WHOP_PRODUCT_BASIC", "")},
-    "standard": {"name": "Стандартный пакет","days": 30, "price": 24.99, "currency": "EUR", "ls_variant_id": os.getenv("LS_VARIANT_3M", ""), "whop_plan_id": os.getenv("WHOP_PLAN_STANDARD", ""), "whop_product_id": os.getenv("WHOP_PRODUCT_STANDARD", "")},
+    "basic":    {"name": "Базовый пакет",    "days": 30, "price": 14.99, "currency": "EUR", "description": "Закрытое Telegram-сообщество для родителей. Доступ на 30 дней", "ls_variant_id": os.getenv("LS_VARIANT_1M", ""), "whop_plan_id": os.getenv("WHOP_PLAN_BASIC", ""), "whop_product_id": os.getenv("WHOP_PRODUCT_BASIC", "")},
+    "standard": {"name": "Стандартный пакет","days": 30, "price": 24.99, "currency": "EUR", "description": "Всё из Базового + индивидуальный разбор и личная онлайн-встреча", "ls_variant_id": os.getenv("LS_VARIANT_3M", ""), "whop_plan_id": os.getenv("WHOP_PLAN_STANDARD", ""), "whop_product_id": os.getenv("WHOP_PRODUCT_STANDARD", "")},
 }
 
 WHOP_COMPANY_ID = os.getenv("WHOP_COMPANY_ID", "")

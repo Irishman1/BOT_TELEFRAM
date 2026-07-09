@@ -235,7 +235,8 @@ async def choose_plan(callback: CallbackQuery, bot: Bot, state: FSMContext):
     kb.adjust(1)
 
     await callback.message.edit_text(
-        f"📦 <b>{plan['name']}</b> — {price} €\n\n"
+        f"📦 <b>{plan['name']}</b> — {price} €\n"
+        f"{plan.get('description', '')}\n\n"
         f"Нажми кнопку — откроется страница оплаты.\n"
         f"После оплаты бот автоматически отправит ссылку на группу.\n\n"
         f"🔒 Защищено {provider_name}",
