@@ -68,7 +68,8 @@ async def _finalize_order(bot: Bot, order: dict, paypal_token: str, actual_amoun
             msg += (
                 f"\n\n🔗 <b>Твоя ссылка на группу:</b>\n{link}\n\n"
                 f"⏱ <b>Действует только 15 минут!</b>\n"
-                f"⚠️ Одноразовая — только для тебя. Не передавай никому."
+                f"⚠️ Одноразовая — только для тебя. Не передавай никому.\n\n"
+                f"Не успел перейти? Напиши в поддержку — /support"
             )
             kb.button(text="👥 Присоединиться к группе", url=link)
         await bot.send_message(tg_id, msg, parse_mode="HTML",
