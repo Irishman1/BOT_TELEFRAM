@@ -57,9 +57,9 @@ async def kick_expired_users(bot: Bot):
             # Уведомляем
             await bot.send_message(
                 tg_id,
-                "❌ <b>Твоя подписка закончилась</b>\n\n"
-                "Ты удалён из канала.\n\n"
-                "Чтобы получить доступ снова — оформи подписку:\n/start",
+                "⏳ <b>Срок подписки истёк</b>\n\n"
+                "Доступ к каналу временно приостановлен.\n\n"
+                "Будем рады видеть тебя снова — оформить подписку можно здесь:\n/start",
                 parse_mode="HTML"
             )
             logger.info(f"Kicked expired user: {tg_id}")
