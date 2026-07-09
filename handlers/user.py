@@ -4,10 +4,10 @@ from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from datetime import datetime, timedelta
-from config import GROUP_ID, GROUP_NAME, SERVER_URL, PLANS, PAYMENT_PROVIDER, WELCOME_TEXT, encode_id
+from datetime import datetime
+from config import GROUP_NAME, SERVER_URL, PLANS, PAYMENT_PROVIDER, WELCOME_TEXT, encode_id
 from database import (
-    upsert_user, get_user, save_invite_link, get_invite_link,
+    upsert_user, get_user,
     activate_subscription, save_pending_order, get_promo, log_buy_click,
     set_pending_order_paypal_id, get_user_payments, save_support_message,
 )
@@ -346,47 +346,22 @@ async def process_support_message(message: Message, state: FSMContext, bot: Bot)
 # ─── /getlink ────────────────────────────────────────────────
 
 @router.message(Command("getlink"))
-@router.callback_query(lambda c: c.data == "get_link")
-async def get_group_link(event, bot: Bot):
-    message = event.message if isinstance(event, CallbackQuery) else event
-    tg_id   = event.from_user.id
-
+async def get_group_link(message: Message):
+    tg_id = message.from_user.id
     user = await get_user(tg_id)
-    if not user or not user["is_active"]:
-        text = "❌ Нет активной подписки. Оформить: /start"
-        if isinstance(event, CallbackQuery):
-            await event.answer(text, show_alert=True)
-        else:
-            await message.answer(text)
-        if isinstance(event, CallbackQuery):
-            await event.answer()
-        return
-
-    existing = await get_invite_link(tg_id)
-    if existing:
-        link = existing
-    else:
-        expires_at = datetime.now() + timedelta(minutes=15)
-        invite = await bot.create_chat_invite_link(
-            chat_id=GROUP_ID, member_limit=1, expire_date=expires_at
-        )
-        await save_invite_link(tg_id, invite.invite_link, expires_at)
-        link = invite.invite_link
 
     kb = InlineKeyboardBuilder()
-    kb.button(text="👥 Перейти в группу", url=link)
     kb.button(text="💬 Поддержка", callback_data="open_support")
     kb.adjust(1)
 
+    if not user or not user["is_active"]:
+        await message.answer("❌ Нет активной подписки. Оформить: /start")
+        return
+
     await message.answer(
-        f"🔗 <b>Твоя ссылка:</b>\n\n{link}\n\n"
-        f"⏱ <b>Действует только 15 минут!</b>\n"
-        f"⚠️ Одноразовая — только для тебя. Не передавай никому.",
-        parse_mode="HTML",
+        "Чтобы получить ссылку на группу — напиши в поддержку.",
         reply_markup=kb.as_markup()
     )
-    if isinstance(event, CallbackQuery):
-        await event.answer()
 
 
 # ─── /cancel ─────────────────────────────────────────────────
