@@ -222,6 +222,14 @@ async def whop_webhook(request: web.Request) -> web.Response:
         return web.Response(status=400)
 
     event_type = data.get("type", "")
+    if event_type == "payment.failed":
+        payload = data.get("data", {}) or {}
+        metadata = payload.get("metadata", {}) or {}
+        tg_id = metadata.get("tg_id")
+        if tg_id:
+            await _notify_payment_failed(bot, int(tg_id))
+        return web.Response(status=200)
+
     if event_type != "payment.succeeded":
         return web.Response(status=200)
 
