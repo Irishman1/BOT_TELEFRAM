@@ -236,7 +236,8 @@ async def give_post(request):
     exp = u.get("expires_at")
     cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
     new_exp = (cur if cur > now else now) + timedelta(days=days)
-    await db_exec("UPDATE users SET expires_at=?,plan=?,is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE username=?",(new_exp.isoformat(),plan_key,now.isoformat(),username))
+    display_name = f'@{u["username"]}' if u.get("username") else (u.get("full_name") or str(u["tg_id"]))
+    await db_exec("UPDATE users SET expires_at=?,plan=?,is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE tg_id=?",(new_exp.isoformat(),plan_key,now.isoformat(),u["tg_id"]))
     link = await create_invite_link()
     try:
         if reason == "card":
@@ -249,7 +250,7 @@ async def give_post(request):
     except: pass
     if link:
         msg = (
-            f'<div class="alert alert-success">✅ @{username} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>'
+            f'<div class="alert alert-success">✅ {display_name} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>'
             f'<div style="margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;">'
             f'<div style="font-size:13px;color:#166534;font-weight:600;margin-bottom:8px;">🔗 Одноразовая ссылка на группу (15 мин):</div>'
             f'<div style="display:flex;gap:8px;align-items:center;">'
@@ -261,7 +262,7 @@ async def give_post(request):
             f'</div>'
         )
     else:
-        msg = f'<div class="alert alert-success">✅ @{username} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>'
+        msg = f'<div class="alert alert-success">✅ {display_name} получил доступ на {days} дней до {new_exp.strftime("%d.%m.%Y")}</div>'
     return await render("give.html", page="give", msg=msg, prefill="")
 
 
