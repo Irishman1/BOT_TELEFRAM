@@ -303,7 +303,7 @@ def _success_html():
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#0070ba;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
 <body><div class="card"><div class="icon">✅</div><h1>Оплата произведена!</h1>
 <p>Вернись в бота — он уже отправил тебе ссылку на группу.</p>
-<a href="https://telegram.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
+<a href="https://t.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
 
 
 def _error_html():
@@ -313,7 +313,7 @@ def _error_html():
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#dc2626;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
 <body><div class="card"><div class="icon">❌</div><h1>Ошибка оплаты</h1>
 <p>Что-то пошло не так. Вернись в бота и попробуй снова.</p>
-<a href="https://telegram.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
+<a href="https://t.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
 
 
 def _cancel_html():
@@ -323,7 +323,7 @@ def _cancel_html():
 <style>*{{box-sizing:border-box;margin:0;padding:0}}body{{font-family:sans-serif;background:#f5f6fa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px}}.card{{background:#fff;border-radius:16px;padding:36px 28px;text-align:center;max-width:360px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.08)}}.icon{{font-size:52px;margin-bottom:16px}}h1{{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px}}p{{font-size:15px;color:#6b7280;margin-bottom:24px}}a{{display:inline-block;background:#534AB7;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px}}</style></head>
 <body><div class="card"><div class="icon">↩️</div><h1>Оплата отменена</h1>
 <p>Ты отменил оплату. Вернись в бота, чтобы попробовать снова.</p>
-<a href="https://telegram.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
+<a href="https://t.me/{BOT_USERNAME}">Вернуться в бота →</a></div></body></html>"""
 
 
 def setup_webhook_server(bot: Bot) -> web.Application:
