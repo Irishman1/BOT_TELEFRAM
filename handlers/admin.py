@@ -22,6 +22,7 @@ def is_admin(tg_id: int) -> bool:
 
 class NotifyState(StatesGroup):
     waiting_message = State()
+    waiting_confirm = State()
 
 
 # ─── /admin ─────────────────────────────────────────────────
@@ -231,40 +232,96 @@ async def notify_choose_target(callback: CallbackQuery, state: FSMContext):
         label = f"подписчикам тарифа «{PLANS.get(target, {}).get('name', target)}»"
 
     await callback.message.edit_text(
-        f"✍️ Отправь сообщение (текст, фото, видео — что угодно), "
-        f"и я разошлю его {label}.\n\n"
+        f"✍️ Отправь сообщение (текст, фото, видео — что угодно) для {label}.\n"
+        f"Перед рассылкой я покажу превью и попрошу подтверждение.\n\n"
         f"Для отмены — /cancel"
     )
     await callback.answer()
 
 
 @router.message(StateFilter(NotifyState.waiting_message))
-async def notify_send(message: Message, bot: Bot, state: FSMContext):
+async def notify_preview(message: Message, bot: Bot, state: FSMContext):
     if not is_admin(message.from_user.id):
         return
 
     data = await state.get_data()
     target = data.get("notify_target", "all")
+
+    if target == "all":
+        users = await get_all_active_users()
+        label = "всем активным подписчикам"
+    else:
+        users = await get_active_users_by_plan(target)
+        label = f"подписчикам тарифа «{PLANS.get(target, {}).get('name', target)}»"
+
+    await state.update_data(
+        notify_chat_id=message.chat.id,
+        notify_message_id=message.message_id,
+    )
+    await state.set_state(NotifyState.waiting_confirm)
+
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Отправить", callback_data="notify_confirm:send")
+    kb.button(text="❌ Отменить", callback_data="notify_confirm:cancel")
+    kb.adjust(1)
+
+    await bot.copy_message(
+        chat_id=message.chat.id,
+        from_chat_id=message.chat.id,
+        message_id=message.message_id,
+    )
+    await message.answer(
+        f"⬆️ Вот так будет выглядеть сообщение.\n\n"
+        f"Отправить {label} ({len(users)} чел.)?",
+        reply_markup=kb.as_markup()
+    )
+
+
+@router.callback_query(lambda c: c.data.startswith("notify_confirm:"))
+async def notify_confirm(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+
+    action = callback.data.split(":", 1)[1]
+
+    if action == "cancel":
+        await state.set_state(None)
+        await callback.message.edit_text("❌ Рассылка отменена.")
+        await callback.answer()
+        return
+
+    data = await state.get_data()
+    target = data.get("notify_target", "all")
+    chat_id = data.get("notify_chat_id")
+    message_id = data.get("notify_message_id")
     await state.set_state(None)
+
+    if not chat_id or not message_id:
+        await callback.message.edit_text("❌ Не удалось найти сообщение для рассылки, попробуй заново: /notify")
+        await callback.answer()
+        return
 
     if target == "all":
         users = await get_all_active_users()
     else:
         users = await get_active_users_by_plan(target)
 
+    await callback.message.edit_text("⏳ Рассылка началась...")
+    await callback.answer()
+
     sent, failed = 0, 0
     for user in users:
         try:
             await bot.copy_message(
                 chat_id=user["tg_id"],
-                from_chat_id=message.chat.id,
-                message_id=message.message_id,
+                from_chat_id=chat_id,
+                message_id=message_id,
             )
             sent += 1
         except Exception:
             failed += 1
 
-    await message.answer(
+    await callback.message.answer(
         f"📨 Рассылка завершена\n"
         f"✅ Отправлено: {sent}\n"
         f"❌ Ошибок: {failed}"
