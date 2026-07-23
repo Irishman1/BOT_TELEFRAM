@@ -7,6 +7,8 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token_here")
 GROUP_ID = int(os.getenv("GROUP_ID", "-100xxxxxxxxx"))
 ADMIN_IDS = list(map(int, os.getenv("ADMIN_IDS", "123456789").split(",")))
+EXTRA_ADMIN_IDS = [int(x) for x in os.getenv("EXTRA_ADMIN_IDS", "").split(",") if x.strip()]
+ALL_ADMIN_IDS = list(dict.fromkeys(ADMIN_IDS + EXTRA_ADMIN_IDS))
 
 
 def encode_id(tg_id: int) -> str:

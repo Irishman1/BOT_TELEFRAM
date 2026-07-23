@@ -200,6 +200,13 @@ async def get_all_active_users() -> list:
             return [dict(r) for r in await cur.fetchall()]
 
 
+async def get_active_users_by_plan(plan: str) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM users WHERE is_active = 1 AND plan = ?", (plan,)) as cur:
+            return [dict(r) for r in await cur.fetchall()]
+
+
 async def get_stats() -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT COUNT(*) FROM users WHERE is_active = 1") as cur:

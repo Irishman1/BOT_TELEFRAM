@@ -1,20 +1,27 @@
-from aiogram import Router, Bot
-from aiogram.types import Message
-from aiogram.filters import Command
+from aiogram import Router, Bot, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from datetime import datetime, timedelta
 
-from config import ADMIN_IDS, GROUP_ID, PLANS
+from config import ALL_ADMIN_IDS, GROUP_ID, PLANS
 from database import (
     get_stats, find_user_by_username, get_user,
-    activate_subscription, deactivate_user, get_all_active_users
+    activate_subscription, deactivate_user, get_all_active_users,
+    get_active_users_by_plan,
 )
 
 router = Router()
 
 
 def is_admin(tg_id: int) -> bool:
-    return tg_id in ADMIN_IDS
+    return tg_id in ALL_ADMIN_IDS
+
+
+class NotifyState(StatesGroup):
+    waiting_message = State()
 
 
 # ─── /admin ─────────────────────────────────────────────────
@@ -36,7 +43,8 @@ async def cmd_admin(message: Message):
         f"/find @username — найти пользователя\n"
         f"/give @username 30 — выдать доступ на N дней\n"
         f"/kick @username — удалить пользователя\n"
-        f"/broadcast — разослать сообщение всем",
+        f"/broadcast — разослать текст всем\n"
+        f"/notify — рассылка по тарифам (текст/фото/видео)",
         parse_mode="HTML"
     )
 
@@ -177,6 +185,81 @@ async def cmd_broadcast(message: Message, bot: Bot):
     for user in users:
         try:
             await bot.send_message(user["tg_id"], text)
+            sent += 1
+        except Exception:
+            failed += 1
+
+    await message.answer(
+        f"📨 Рассылка завершена\n"
+        f"✅ Отправлено: {sent}\n"
+        f"❌ Ошибок: {failed}"
+    )
+
+
+# ─── /notify — рассылка по тарифам с медиа ────────────────────
+
+@router.message(Command("notify"))
+async def cmd_notify(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    await state.set_state(None)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📢 Всем подписчикам", callback_data="notify_target:all")
+    for key, plan in PLANS.items():
+        kb.button(text=f"📦 {plan['name']}", callback_data=f"notify_target:{key}")
+    kb.adjust(1)
+
+    await message.answer(
+        "Кому отправить сообщение?",
+        reply_markup=kb.as_markup()
+    )
+
+
+@router.callback_query(lambda c: c.data.startswith("notify_target:"))
+async def notify_choose_target(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+
+    target = callback.data.split(":", 1)[1]
+    await state.set_state(NotifyState.waiting_message)
+    await state.update_data(notify_target=target)
+
+    if target == "all":
+        label = "всем активным подписчикам"
+    else:
+        label = f"подписчикам тарифа «{PLANS.get(target, {}).get('name', target)}»"
+
+    await callback.message.edit_text(
+        f"✍️ Отправь сообщение (текст, фото, видео — что угодно), "
+        f"и я разошлю его {label}.\n\n"
+        f"Для отмены — /cancel"
+    )
+    await callback.answer()
+
+
+@router.message(StateFilter(NotifyState.waiting_message))
+async def notify_send(message: Message, bot: Bot, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    data = await state.get_data()
+    target = data.get("notify_target", "all")
+    await state.set_state(None)
+
+    if target == "all":
+        users = await get_all_active_users()
+    else:
+        users = await get_active_users_by_plan(target)
+
+    sent, failed = 0, 0
+    for user in users:
+        try:
+            await bot.copy_message(
+                chat_id=user["tg_id"],
+                from_chat_id=message.chat.id,
+                message_id=message.message_id,
+            )
             sent += 1
         except Exception:
             failed += 1

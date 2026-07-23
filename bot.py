@@ -3,8 +3,9 @@ import logging
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, ALL_ADMIN_IDS
 from database import init_db
 from handlers import user, admin
 from handlers.payments import setup_webhook_server
@@ -17,6 +18,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+USER_COMMANDS = [
+    BotCommand(command="start", description="Главное меню"),
+    BotCommand(command="status", description="Моя подписка"),
+    BotCommand(command="history", description="История платежей"),
+    BotCommand(command="getlink", description="Ссылка на группу"),
+    BotCommand(command="support", description="Написать в поддержку"),
+    BotCommand(command="cancel", description="Отменить текущее действие"),
+    BotCommand(command="help", description="Справка"),
+]
+
+ADMIN_COMMANDS = USER_COMMANDS + [
+    BotCommand(command="admin", description="Панель администратора"),
+    BotCommand(command="find", description="Найти пользователя"),
+    BotCommand(command="give", description="Выдать доступ"),
+    BotCommand(command="kick", description="Удалить пользователя"),
+    BotCommand(command="broadcast", description="Разослать текст всем"),
+    BotCommand(command="notify", description="Рассылка по тарифам"),
+]
+
+
+async def setup_bot_commands(bot: Bot):
+    await bot.set_my_commands(USER_COMMANDS, scope=BotCommandScopeDefault())
+    for admin_id in ALL_ADMIN_IDS:
+        try:
+            await bot.set_my_commands(ADMIN_COMMANDS, scope=BotCommandScopeChat(chat_id=admin_id))
+        except Exception as e:
+            logger.warning(f"Failed to set admin commands for {admin_id}: {e}")
+
 
 async def main():
     bot = Bot(token=BOT_TOKEN)
@@ -26,6 +55,7 @@ async def main():
     dp.include_router(admin.router)
 
     await init_db()
+    await setup_bot_commands(bot)
     await start_scheduler(bot)
 
     # Один сервер — і webhook і адмінка
