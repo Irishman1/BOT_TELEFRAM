@@ -2,6 +2,7 @@ import os
 import logging
 import aiosqlite
 from datetime import datetime, timedelta
+from urllib.parse import quote
 from aiohttp import web
 
 logger = logging.getLogger(__name__)
@@ -327,7 +328,9 @@ async def support_page(request):
         date = (m["created_at"] or "")[:16].replace("T", " ")
         read_cls = "" if m["is_read"] else 'style="font-weight:600;background:#f0effe;"'
         status = '<span class="badge badge-active">Прочитано</span>' if m["is_read"] else '<span class="badge badge-expired">Новое</span>'
-        action = "" if m["is_read"] else f'<a href="/admin/support/read?id={m["id"]}" class="btn-sm">Отметить прочитанным</a>'
+        mark_read = "" if m["is_read"] else f'<a href="/admin/support/read?id={m["id"]}" class="btn-sm">Отметить прочитанным</a>'
+        reply_link = f'<a href="/admin/support/reply?tg_id={m["tg_id"]}&msg_id={m["id"]}&name={quote(un.lstrip("@"))}" class="btn-sm" style="margin-left:6px;">✉️ Ответить</a>'
+        action = mark_read + reply_link
         rows_html += f"""<tr {read_cls}>
             <td>{date}</td>
             <td>{un}<br><span style="color:var(--muted);font-size:12px;">{m['tg_id']}</span></td>
@@ -351,6 +354,30 @@ async def support_mark_read(request):
 @require_login
 async def support_mark_all_read(request):
     await mark_all_support_read()
+    raise web.HTTPFound("/admin/support")
+
+
+@require_login
+async def support_reply_get(request):
+    tg_id = request.rel_url.query.get("tg_id", "")
+    msg_id = request.rel_url.query.get("msg_id", "")
+    name = request.rel_url.query.get("name", "")
+    user_label = f"@{name}" if name else f"ID {tg_id}"
+    return await render("reply.html", page="support", msg="", tg_id=tg_id, msg_id=msg_id, user_label=user_label)
+
+
+@require_login
+async def support_reply_post(request):
+    data = await request.post()
+    tg_id = data.get("tg_id", "")
+    msg_id = data.get("msg_id", "")
+    text = data.get("text", "").strip()
+    if not tg_id or not text:
+        return await render("reply.html", page="support", msg='<div class="alert alert-danger">Заполни сообщение</div>', tg_id=tg_id, msg_id=msg_id, user_label=f"ID {tg_id}")
+
+    await send_tg(int(tg_id), f"💬 <b>Ответ от поддержки:</b>\n\n{text}")
+    if msg_id:
+        await mark_support_read(int(msg_id))
     raise web.HTTPFound("/admin/support")
 
 
@@ -490,6 +517,8 @@ def setup_admin(app: web.Application):
     app.router.add_get ("/admin/support",       support_page)
     app.router.add_get ("/admin/support/read",  support_mark_read)
     app.router.add_get ("/admin/support/read_all", support_mark_all_read)
+    app.router.add_get ("/admin/support/reply", support_reply_get)
+    app.router.add_post("/admin/support/reply", support_reply_post)
     app.router.add_get ("/admin/backup",        backup_db)
 
 

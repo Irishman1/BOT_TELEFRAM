@@ -1,0 +1,14 @@
+<div class="page-header"><h2>Ответить пользователю</h2><p>{{user_label}}</p></div>
+<div class="card card-body" style="max-width:480px;">
+  {{msg}}
+  <form method="POST">
+    <input type="hidden" name="tg_id" value="{{tg_id}}">
+    <input type="hidden" name="msg_id" value="{{msg_id}}">
+    <div class="form-group">
+      <label>Сообщение</label>
+      <textarea name="text" rows="6" required style="width:100%;padding:9px 12px;border:1px solid #e5e7ef;border-radius:9px;font-size:14px;margin-top:6px;font-family:inherit;"></textarea>
+    </div>
+    <button class="btn btn-primary" type="submit">Отправить ответ</button>
+    <a href="/admin/support" class="btn-sm" style="margin-left:8px;">← Назад</a>
+  </form>
+</div>
