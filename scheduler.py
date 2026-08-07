@@ -106,16 +106,16 @@ async def start_scheduler(bot: Bot):
         id="kick_expired"
     )
 
-    # Уведомление за 3 дня — каждый день в 10:00
+    # Уведомление за 3 дня — каждый день в 12:00
     scheduler.add_job(
-        notify_expiring, "cron", hour=10, minute=0,
+        notify_expiring, "cron", hour=12, minute=0,
         kwargs={"bot": bot, "days": 3},
         id="notify_3d"
     )
 
-    # Уведомление за 1 день — каждый день в 10:00
+    # Уведомление за 1 день — каждый день в 12:00
     scheduler.add_job(
-        notify_expiring, "cron", hour=10, minute=0,
+        notify_expiring, "cron", hour=12, minute=0,
         kwargs={"bot": bot, "days": 1},
         id="notify_1d"
     )
