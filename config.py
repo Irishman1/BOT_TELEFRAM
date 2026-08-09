@@ -23,9 +23,13 @@ def encode_id(tg_id: int) -> str:
 
 def decode_id(code: str):
     try:
-        return int(code.upper(), 36)
+        value = int(code.upper(), 36)
     except (ValueError, AttributeError):
         return None
+    # Реальні Telegram ID зараз не перевищують ~10 трлн; ще й захист від переповнення SQLite INTEGER (2^63-1)
+    if value <= 0 or value > 10**13:
+        return None
+    return value
 
 # Server
 SERVER_URL = os.getenv("SERVER_URL", "https://your-app.railway.app")
