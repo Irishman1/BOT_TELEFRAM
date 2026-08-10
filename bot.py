@@ -1,12 +1,12 @@
 import asyncio
 import logging
 from aiohttp import web
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, BaseMiddleware
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
+from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat, TelegramObject
 
 from config import BOT_TOKEN, ALL_ADMIN_IDS
-from database import init_db
+from database import init_db, upsert_user
 from handlers import user, admin
 from handlers.payments import setup_webhook_server
 from scheduler import start_scheduler
@@ -17,6 +17,22 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+class UpsertUserMiddleware(BaseMiddleware):
+    """Реєструє юзера в базі при БУДЬ-ЯКІЙ взаємодії з ботом, не тільки на /start"""
+    async def __call__(self, handler, event: TelegramObject, data: dict):
+        tg_user = data.get("event_from_user")
+        if tg_user and not tg_user.is_bot:
+            try:
+                await upsert_user(
+                    tg_id=tg_user.id,
+                    username=tg_user.username or "",
+                    full_name=tg_user.full_name,
+                )
+            except Exception as e:
+                logger.warning(f"UpsertUserMiddleware failed for {tg_user.id}: {e}")
+        return await handler(event, data)
 
 USER_COMMANDS = [
     BotCommand(command="start", description="Главное меню"),
@@ -50,6 +66,7 @@ async def setup_bot_commands(bot: Bot):
 async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
+    dp.update.outer_middleware(UpsertUserMiddleware())
 
     dp.include_router(user.router)
     dp.include_router(admin.router)
