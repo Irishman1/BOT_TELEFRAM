@@ -333,7 +333,7 @@ async def support_page(request):
         action = mark_read + reply_link
         rows_html += f"""<tr {read_cls}>
             <td>{date}</td>
-            <td>{un}<br><span style="color:var(--muted);font-size:12px;">{m['tg_id']}</span></td>
+            <td>{un}<br><span style="color:var(--muted);font-size:12px;">{m['tg_id']} · код {encode_id(m['tg_id'])}</span></td>
             <td>{m['text']}</td>
             <td>{status}</td>
             <td>{action}</td>
