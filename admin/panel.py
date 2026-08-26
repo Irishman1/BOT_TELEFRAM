@@ -10,6 +10,7 @@ from database import (
     get_all_promos, create_promo, toggle_promo, delete_promo, get_buy_clicks_count,
     get_clicks_and_payments_by_month, get_unread_support_count, get_support_messages,
     mark_support_read, mark_all_support_read,
+    log_action, get_admin_log,
 )
 
 ADMIN_LOGIN    = os.getenv("ADMIN_LOGIN", "admin")
@@ -34,7 +35,7 @@ async def render(template, page="", **ctx):
         content = f.read()
     for k, v in ctx.items():
         content = content.replace(f"{{{{{k}}}}}", str(v) if v is not None else "")
-    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments","promo","support"]}
+    nav = {f"nav_{p}": ("active" if p == page else "") for p in ["stats","users","find","give","kick","broadcast","payments","promo","support","logs"]}
     html = base.replace("{{content}}", content)
     for k, v in nav.items():
         html = html.replace(f"{{{{{k}}}}}", v)
@@ -63,6 +64,52 @@ async def db_exec(q, p=()):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(q, p)
         await db.commit()
+
+
+CODE_CHARS = set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+# Невидимі символи, які тягнуться разом зі вставкою з Telegram
+INVISIBLE = "​‌‍‎‏﻿⁦⁧⁨⁩"
+
+
+def normalize_query(raw: str) -> str:
+    """Приводить будь-яку вставку до чистого юзернейма: '@Name ', 't.me/Name', 'https://t.me/Name'."""
+    q = (raw or "")
+    for ch in INVISIBLE:
+        q = q.replace(ch, "")
+    q = q.strip()
+    low = q.lower()
+    for prefix in ("https://t.me/", "http://t.me/", "https://telegram.me/",
+                   "http://telegram.me/", "t.me/", "telegram.me/"):
+        if low.startswith(prefix):
+            q = q[len(prefix):]
+            break
+    q = q.lstrip("@").strip()
+    return q.rstrip("/")
+
+
+def looks_like_code(q: str) -> bool:
+    """Код учасника — короткий рядок з алфавіту encode_id. Юзернейми з '_' або довші сюди не потрапляють."""
+    return bool(q) and len(q) <= 9 and all(c in CODE_CHARS for c in q.upper())
+
+
+async def find_user(q: str):
+    """Шукає юзера за юзернеймом (без урахування регістру), tg_id або кодом учасника."""
+    q = normalize_query(q)
+    if not q:
+        return None
+    u = await db_one("SELECT * FROM users WHERE username=? COLLATE NOCASE", (q,))
+    if u:
+        return u
+    if q.isdigit():
+        u = await db_one("SELECT * FROM users WHERE tg_id=?", (int(q),))
+        if u:
+            return u
+    if looks_like_code(q):
+        decoded = decode_id(q)
+        if decoded:
+            return await db_one("SELECT * FROM users WHERE tg_id=?", (decoded,))
+    return None
 
 async def send_tg(tg_id, text):
     import aiohttp
@@ -169,11 +216,13 @@ async def stats(request):
 
 @require_login
 async def users_page(request):
-    q = request.rel_url.query.get("q","")
+    q = normalize_query(request.rel_url.query.get("q",""))
     if q:
+        # Пошук за кодом учасника — точний збіг по tg_id, інакше LIKE по нікнейму/імені/id
+        code_id = decode_id(q) if looks_like_code(q) else None
         rows = await db_fetch(
-            "SELECT * FROM users WHERE username LIKE ? OR full_name LIKE ? OR CAST(tg_id AS TEXT) LIKE ? ORDER BY expires_at DESC",
-            (f"%{q}%", f"%{q}%", f"%{q}%")
+            "SELECT * FROM users WHERE username LIKE ? OR full_name LIKE ? OR CAST(tg_id AS TEXT) LIKE ? OR tg_id=? ORDER BY expires_at DESC",
+            (f"%{q}%", f"%{q}%", f"%{q}%", code_id if code_id else -1)
         )
     else:
         rows = await db_fetch("SELECT * FROM users ORDER BY is_active DESC,expires_at ASC")
@@ -187,6 +236,8 @@ async def users_page(request):
         rows_html += (
             "<tr>"
             f"<td><div style='font-weight:500'>{name}</div><div style='font-size:12px;color:#6b7280'>@{un}</div></td>"
+            f"<td><span style='font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px'>{encode_id(u['tg_id'])}</span>"
+            f"<div style='font-size:12px;color:#6b7280'>{u['tg_id']}</div></td>"
             f"<td>{plan}</td>"
             f"<td>{exp}</td>"
             f"<td>{badge}</td>"
@@ -205,9 +256,10 @@ async def find_get(request):
 @require_login
 async def find_post(request):
     data = await request.post()
-    q = data.get("q","").lstrip("@")
-    u = await db_one("SELECT * FROM users WHERE username=? OR tg_id=?",(q,q))
+    q = normalize_query(data.get("q",""))
+    u = await find_user(q)
     if not u:
+        await log_action("find", query=q, details="не найден", ok=False)
         return await render("find.html", page="find", result='<div class="alert alert-danger">Пользователь не найден</div>')
     s = '<span class="badge badge-active">Активный</span>' if u["is_active"] else '<span class="badge badge-expired">Неактивный</span>'
     exp = (u["expires_at"] or "")[:10] or "—"
@@ -222,24 +274,44 @@ async def give_get(request):
 @require_login
 async def give_post(request):
     data = await request.post()
-    username = data.get("username","").lstrip("@")
-    days = int(data.get("days",30))
+    username = normalize_query(data.get("username",""))
+    try:
+        days = int(str(data.get("days","30")).strip() or 30)
+    except ValueError:
+        days = 0
+    if days < 1:
+        await log_action("give", query=username, details=f"некорректное число дней: {data.get('days')!r}", ok=False)
+        return await render("give.html", page="give", msg='<div class="alert alert-danger">Укажи количество дней числом (больше 0)</div>', prefill=username)
     reason = data.get("reason","gift")
     plan_key = (data.get("plan_key","manual:0") or "manual:0").split(":")[0]
-    u = await db_one("SELECT * FROM users WHERE username=?",(username,))
+    u = await find_user(username)
     if not u:
-        decoded = decode_id(username)
-        if decoded:
-            u = await db_one("SELECT * FROM users WHERE tg_id=?",(decoded,))
-    if not u:
-        return await render("give.html", page="give", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
+        await log_action("give", query=username, details=f"не найден (пакет {plan_key}, {days} дн.)", ok=False)
+        return await render("give.html", page="give", msg=f'<div class="alert alert-danger">Пользователь <b>{username}</b> не найден в базе. Он ещё ни разу не писал боту — попроси его отправить боту /start, после этого доступ можно выдать.</div>', prefill=username)
     now = datetime.now()
     exp = u.get("expires_at")
-    cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
+    cur = now
+    if exp and u["is_active"]:
+        try:
+            cur = datetime.fromisoformat(exp)
+        except (ValueError, TypeError):
+            cur = now  # зіпсована дата в базі не має блокувати видачу
     new_exp = (cur if cur > now else now) + timedelta(days=days)
     display_name = f'@{u["username"]}' if u.get("username") else (u.get("full_name") or str(u["tg_id"]))
     await db_exec("UPDATE users SET expires_at=?,plan=?,is_active=1,subscribed_at=COALESCE(subscribed_at,?),notified_3d=0,notified_1d=0 WHERE tg_id=?",(new_exp.isoformat(),plan_key,now.isoformat(),u["tg_id"]))
-    link = await create_invite_link()
+    await log_action(
+        "give", query=username, target_tg_id=u["tg_id"], target_name=display_name,
+        details=f"{PLANS.get(plan_key, plan_key)}, +{days} дн. → {new_exp.strftime('%d.%m.%Y')}, "
+                f"причина: {'оплата на карту' if reason == 'card' else 'подарок'}, "
+                f"было: {(exp or '—')[:10]}"
+    )
+    try:
+        link = await create_invite_link()
+    except Exception as e:
+        link = None  # підписка вже активована — збій Telegram не має видавати 500 і лякати адміна
+        logger.warning(f"create_invite_link failed for {u['tg_id']}: {e}")
+        await log_action("give", query=username, target_tg_id=u["tg_id"], target_name=display_name,
+                         details=f"доступ выдан, но ссылку-приглашение создать не удалось: {e}", ok=False)
     try:
         if reason == "card":
             tg_msg = f"✅ <b>Оплата подтверждена!</b>\n📅 Доступ до: <b>{new_exp.strftime('%d.%m.%Y')}</b>"
@@ -274,18 +346,22 @@ async def kick_get(request):
 @require_login
 async def kick_post(request):
     data = await request.post()
-    username = data.get("username","").lstrip("@")
-    u = await db_one("SELECT * FROM users WHERE username=?",(username,))
+    username = normalize_query(data.get("username",""))
+    u = await find_user(username)
     if not u:
+        await log_action("kick", query=username, details="не найден", ok=False)
         return await render("kick.html", page="kick", msg='<div class="alert alert-danger">Пользователь не найден</div>', prefill=username)
-    await db_exec("UPDATE users SET is_active=0 WHERE username=?",(username,))
+    await db_exec("UPDATE users SET is_active=0 WHERE tg_id=?",(u["tg_id"],))
     import aiohttp as _h
     async with _h.ClientSession() as s:
         await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/banChatMember",  json={"chat_id":GROUP_ID,"user_id":u["tg_id"]})
         await s.post(f"https://api.telegram.org/bot{BOT_TOKEN}/unbanChatMember",json={"chat_id":GROUP_ID,"user_id":u["tg_id"]})
     try: await send_tg(u["tg_id"],"❌ Твой доступ отменён администратором.")
     except: pass
-    return await render("kick.html", page="kick", msg=f'<div class="alert alert-success">✅ @{username} удалён из группы</div>', prefill="")
+    kicked = f'@{u["username"]}' if u.get("username") else (u.get("full_name") or str(u["tg_id"]))
+    await log_action("kick", query=username, target_tg_id=u["tg_id"], target_name=kicked,
+                     details=f"доступ был до {(u.get('expires_at') or '—')[:10]}, забанен и разбанен в группе")
+    return await render("kick.html", page="kick", msg=f'<div class="alert alert-success">✅ {kicked} удалён из группы</div>', prefill="")
 
 
 @require_login
@@ -314,6 +390,7 @@ async def broadcast_post(request):
     for u in users:
         try: await send_tg(u["tg_id"],text); sent+=1
         except: failed+=1
+    await log_action("broadcast", details=f"аудитория: {target}, отправлено {sent}, ошибок {failed}, текст: {text[:120]}")
     return await render("broadcast.html", page="broadcast", result=f'<div class="alert alert-success">✅ Отправлено: <strong>{sent}</strong>, ошибок: <strong>{failed}</strong></div>')
 
 
@@ -490,6 +567,45 @@ async def promo_delete(request):
     raise web.HTTPFound("/admin/promo")
 
 
+ACTION_LABELS = {
+    "give":      ("🎁", "Выдача доступа"),
+    "kick":      ("🚫", "Удаление"),
+    "find":      ("🔍", "Поиск"),
+    "broadcast": ("📣", "Рассылка"),
+}
+
+
+@require_login
+async def logs_page(request):
+    from html import escape
+    rows = await get_admin_log(300)
+    rows_html = ""
+    for r in rows:
+        emoji, label = ACTION_LABELS.get(r["action"], ("•", r["action"]))
+        when = (r["created_at"] or "").replace("T", " ")[:16]
+        if r["ok"]:
+            act = f'{emoji} {label}'
+        else:
+            act = f'{emoji} {label} <span class="badge badge-expired">ошибка</span>'
+        if r["target_tg_id"]:
+            who = (f'<div>{escape(r["target_name"] or "")}</div>'
+                   f'<div style="font-size:12px;color:#6b7280">{r["target_tg_id"]} · код {encode_id(r["target_tg_id"])}</div>')
+        else:
+            who = '<span style="color:#6b7280">—</span>'
+        rows_html += (
+            "<tr>"
+            f"<td style='white-space:nowrap'>{when}</td>"
+            f"<td style='white-space:nowrap'>{act}</td>"
+            f"<td>{who}</td>"
+            f"<td style='font-size:13px;color:#6b7280'>{escape(r['query'] or '—')}</td>"
+            f"<td style='font-size:13px'>{escape(r['details'] or '')}</td>"
+            "</tr>"
+        )
+    if not rows_html:
+        rows_html = "<tr><td colspan='5' style='color:#6b7280;padding:16px'>Пока пусто — журнал заполняется с момента обновления панели</td></tr>"
+    return await render("logs.html", page="logs", rows=rows_html, count=len(rows))
+
+
 def setup_admin(app: web.Application):
     app.router.add_get ("/admin",            lambda r: web.HTTPFound("/admin/stats"))
     app.router.add_get ("/admin/",           lambda r: web.HTTPFound("/admin/stats"))
@@ -519,6 +635,7 @@ def setup_admin(app: web.Application):
     app.router.add_get ("/admin/support/read_all", support_mark_all_read)
     app.router.add_get ("/admin/support/reply", support_reply_get)
     app.router.add_post("/admin/support/reply", support_reply_post)
+    app.router.add_get ("/admin/logs",          logs_page)
     app.router.add_get ("/admin/backup",        backup_db)
 
 

@@ -104,6 +104,22 @@ async def init_db():
                 is_read    INTEGER DEFAULT 0
             )
         """)
+
+        # Журнал дій адміна — щоб можна було відновити хто/коли/кому що зробив
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS admin_log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at   DATETIME,
+                source       TEXT,
+                action       TEXT,
+                query        TEXT,
+                target_tg_id INTEGER,
+                target_name  TEXT,
+                details      TEXT,
+                ok           INTEGER DEFAULT 1
+            )
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_admin_log_created ON admin_log(created_at DESC)")
         await db.commit()
 
 
@@ -232,10 +248,37 @@ async def find_user_by_username(username: str) -> Optional[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE", (username,)
         ) as cur:
             row = await cur.fetchone()
             return dict(row) if row else None
+
+
+# ─── Admin log ───────────────────────────────────────────────
+
+async def log_action(action: str, source: str = "panel", query: str = "",
+                     target_tg_id: int = None, target_name: str = "",
+                     details: str = "", ok: bool = True):
+    """Пише дію адміна в журнал. Ніколи не кидає виняток — лог не має ламати саму дію."""
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("""
+                INSERT INTO admin_log (created_at, source, action, query, target_tg_id, target_name, details, ok)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (datetime.now().isoformat(), source, action, query,
+                  target_tg_id, target_name, details, 1 if ok else 0))
+            await db.commit()
+    except Exception:
+        pass
+
+
+async def get_admin_log(limit: int = 200) -> list:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM admin_log ORDER BY id DESC LIMIT ?", (limit,)
+        ) as cur:
+            return [dict(r) for r in await cur.fetchall()]
 
 
 # ─── Payments ────────────────────────────────────────────────
