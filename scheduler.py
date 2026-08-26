@@ -9,6 +9,7 @@ from database import (
     get_expiring_users, mark_notified,
     get_expired_users, deactivate_user,
     get_stats, get_buy_clicks_count, DB_PATH,
+    log_action,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,9 +46,12 @@ async def kick_expired_users(bot: Bot):
 
     for user in users:
         tg_id = user["tg_id"]
+        label = f'@{user.get("username") or tg_id}'
         try:
             # Деактивируем в БД
             await deactivate_user(tg_id)
+            await log_action("auto_kick", source="auto", target_tg_id=tg_id, target_name=label,
+                             details=f"подписка истекла {(user.get('expires_at') or '—')[:10]}, доступ снят автоматически")
 
             # Кикаем из канала
             await bot.ban_chat_member(chat_id=GROUP_ID, user_id=tg_id)
@@ -65,6 +69,8 @@ async def kick_expired_users(bot: Bot):
             logger.info(f"Kicked expired user: {tg_id}")
         except Exception as e:
             logger.warning(f"Failed to kick {tg_id}: {e}")
+            await log_action("auto_kick", source="auto", target_tg_id=tg_id, target_name=label,
+                             details=f"не удалось снять доступ: {e}", ok=False)
 
 
 async def daily_backup(bot: Bot):

@@ -10,7 +10,7 @@ from config import ALL_ADMIN_IDS, GROUP_ID, PLANS
 from database import (
     get_stats, find_user_by_username, get_user,
     activate_subscription, deactivate_user, get_all_active_users,
-    get_active_users_by_plan,
+    get_active_users_by_plan, log_action,
 )
 
 router = Router()
@@ -107,10 +107,15 @@ async def cmd_give(message: Message, bot: Bot):
 
     user = await find_user_by_username(username)
     if not user:
+        await log_action("give", source="bot", query=username,
+                         details=f"не найден ({days} дн.)", ok=False)
         await message.answer("❌ Пользователь не найден")
         return
 
     new_expiry = await activate_subscription(user["tg_id"], "manual", days)
+    await log_action("give", source="bot", query=username, target_tg_id=user["tg_id"],
+                     target_name=f'@{user.get("username") or user["tg_id"]}',
+                     details=f"Вручную, +{days} дн. → {new_expiry.strftime('%d.%m.%Y')}, команда /give")
 
     try:
         await bot.send_message(
@@ -142,10 +147,14 @@ async def cmd_kick(message: Message, bot: Bot):
 
     user = await find_user_by_username(parts[1])
     if not user:
+        await log_action("kick", source="bot", query=parts[1], details="не найден", ok=False)
         await message.answer("❌ Пользователь не найден")
         return
 
     await deactivate_user(user["tg_id"])
+    await log_action("kick", source="bot", query=parts[1], target_tg_id=user["tg_id"],
+                     target_name=f'@{user.get("username") or user["tg_id"]}',
+                     details=f"доступ был до {(user.get('expires_at') or '—')[:10]}, команда /kick")
 
     try:
         await bot.ban_chat_member(chat_id=GROUP_ID, user_id=user["tg_id"])

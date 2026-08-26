@@ -147,17 +147,26 @@ async def login_get(request):
         html = f.read().replace("{{error}}", "")
     return web.Response(text=html, content_type="text/html")
 
+def client_ip(request):
+    fwd = request.headers.get("X-Forwarded-For", "")
+    return (fwd.split(",")[0].strip() if fwd else (request.remote or "")) or "—"
+
+
 async def login_post(request):
     data = await request.post()
     if data.get("login") == ADMIN_LOGIN and data.get("password") == ADMIN_PASSWORD:
+        await log_action("login", query=str(data.get("login","")), details=f"вход в панель, IP {client_ip(request)}")
         resp = web.HTTPFound("/admin/stats")
         resp.set_cookie("admin_auth", f"{ADMIN_LOGIN}:{ADMIN_PASSWORD}", max_age=86400*7, httponly=True)
         raise resp
+    # Пароль у лог не пишемо — тільки факт невдалої спроби
+    await log_action("login", query=str(data.get("login","")), details=f"неверный логин или пароль, IP {client_ip(request)}", ok=False)
     with open(os.path.join(TMPL_DIR, "login.html"), encoding="utf-8") as f:
         html = f.read().replace("{{error}}", '<div class="error">Неверный логин или пароль</div>')
     return web.Response(text=html, content_type="text/html")
 
 async def logout(request):
+    await log_action("logout", details="выход из панели")
     resp = web.HTTPFound("/admin/login")
     resp.del_cookie("admin_auth")
     raise resp
@@ -431,6 +440,7 @@ async def support_mark_read(request):
 @require_login
 async def support_mark_all_read(request):
     await mark_all_support_read()
+    await log_action("support_read_all", details="все обращения отмечены прочитанными")
     raise web.HTTPFound("/admin/support")
 
 
@@ -452,7 +462,15 @@ async def support_reply_post(request):
     if not tg_id or not text:
         return await render("reply.html", page="support", msg='<div class="alert alert-danger">Заполни сообщение</div>', tg_id=tg_id, msg_id=msg_id, user_label=f"ID {tg_id}")
 
-    await send_tg(int(tg_id), f"💬 <b>Ответ от поддержки:</b>\n\n{text}")
+    target = await db_one("SELECT username, full_name FROM users WHERE tg_id=?", (int(tg_id),))
+    label = f'@{target["username"]}' if target and target.get("username") else (target or {}).get("full_name", "") or f"ID {tg_id}"
+    try:
+        await send_tg(int(tg_id), f"💬 <b>Ответ от поддержки:</b>\n\n{text}")
+        await log_action("support_reply", target_tg_id=int(tg_id), target_name=label,
+                         details=f"ответ отправлен: {text[:150]}")
+    except Exception as e:
+        await log_action("support_reply", target_tg_id=int(tg_id), target_name=label,
+                         details=f"не удалось отправить ответ: {e}", ok=False)
     if msg_id:
         await mark_support_read(int(msg_id))
     raise web.HTTPFound("/admin/support")
@@ -462,6 +480,7 @@ async def support_reply_post(request):
 
 @require_login
 async def backup_db(request):
+    await log_action("backup", details="скачана полная копия базы")
     return web.FileResponse(
         path=DB_PATH,
         headers={"Content-Disposition": "attachment; filename=backup.db"},
@@ -477,6 +496,7 @@ async def export_users_csv(request):
         w = csv.DictWriter(buf, fieldnames=rows[0].keys())
         w.writeheader()
         w.writerows(rows)
+    await log_action("export_users", details=f"выгружен CSV со всеми пользователями ({len(rows)} шт.)")
     return web.Response(text=buf.getvalue(), content_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=users.csv"})
 
@@ -494,6 +514,7 @@ async def export_payments_csv(request):
         w = csv.DictWriter(buf, fieldnames=rows[0].keys())
         w.writeheader()
         w.writerows(rows)
+    await log_action("export_payments", details=f"выгружен CSV с платежами ({len(rows)} шт.)")
     return web.Response(text=buf.getvalue(), content_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=payments.csv"})
 
@@ -546,10 +567,18 @@ async def promo_page(request):
 async def promo_create(request):
     data = await request.post()
     code = data.get("code","").strip().upper()
-    discount = int(data.get("discount", 0) or 0)
-    max_uses = int(data.get("max_uses", 0) or 0)
+    try:
+        discount = int(data.get("discount", 0) or 0)
+        max_uses = int(data.get("max_uses", 0) or 0)
+    except ValueError:
+        discount = max_uses = 0
     if code and 0 < discount <= 100:
         await create_promo(code, discount, max_uses)
+        await log_action("promo_create", query=code,
+                         details=f"скидка {discount}%, лимит: {max_uses or '∞'}")
+    else:
+        await log_action("promo_create", query=code,
+                         details=f"отклонено: скидка {discount}%, лимит {max_uses}", ok=False)
     raise web.HTTPFound("/admin/promo")
 
 
@@ -557,6 +586,7 @@ async def promo_create(request):
 async def promo_toggle(request):
     code = request.rel_url.query.get("code","")
     await toggle_promo(code)
+    await log_action("promo_toggle", query=code, details="переключен вкл/выкл")
     raise web.HTTPFound("/admin/promo")
 
 
@@ -564,15 +594,29 @@ async def promo_toggle(request):
 async def promo_delete(request):
     code = request.rel_url.query.get("code","")
     await delete_promo(code)
+    await log_action("promo_delete", query=code, details="промокод удалён безвозвратно")
     raise web.HTTPFound("/admin/promo")
 
 
 ACTION_LABELS = {
-    "give":      ("🎁", "Выдача доступа"),
-    "kick":      ("🚫", "Удаление"),
-    "find":      ("🔍", "Поиск"),
-    "broadcast": ("📣", "Рассылка"),
+    "give":             ("🎁", "Выдача доступа"),
+    "kick":             ("🚫", "Удаление"),
+    "find":             ("🔍", "Поиск"),
+    "broadcast":        ("📣", "Рассылка"),
+    "promo_create":     ("🎟", "Промокод создан"),
+    "promo_toggle":     ("🎟", "Промокод вкл/выкл"),
+    "promo_delete":     ("🎟", "Промокод удалён"),
+    "support_reply":    ("💬", "Ответ в поддержку"),
+    "support_read_all": ("💬", "Поддержка прочитана"),
+    "backup":           ("🗄", "Скачана база"),
+    "export_users":     ("📤", "Экспорт пользователей"),
+    "export_payments":  ("📤", "Экспорт платежей"),
+    "login":            ("🔑", "Вход в панель"),
+    "logout":           ("🚪", "Выход"),
+    "auto_kick":        ("⏳", "Авто-снятие доступа"),
 }
+
+SOURCE_LABELS = {"panel": "панель", "bot": "команда в боте", "auto": "планировщик"}
 
 
 @require_login
@@ -583,10 +627,11 @@ async def logs_page(request):
     for r in rows:
         emoji, label = ACTION_LABELS.get(r["action"], ("•", r["action"]))
         when = (r["created_at"] or "").replace("T", " ")[:16]
-        if r["ok"]:
-            act = f'{emoji} {label}'
-        else:
-            act = f'{emoji} {label} <span class="badge badge-expired">ошибка</span>'
+        src = SOURCE_LABELS.get(r["source"], r["source"] or "")
+        act = f'{emoji} {label}'
+        if not r["ok"]:
+            act += ' <span class="badge badge-expired">ошибка</span>'
+        act += f'<div style="font-size:12px;color:#6b7280">{src}</div>'
         if r["target_tg_id"]:
             who = (f'<div>{escape(r["target_name"] or "")}</div>'
                    f'<div style="font-size:12px;color:#6b7280">{r["target_tg_id"]} · код {encode_id(r["target_tg_id"])}</div>')
