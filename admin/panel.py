@@ -238,7 +238,7 @@ async def give_post(request):
     cur = datetime.fromisoformat(exp) if exp and u["is_active"] else now
     new_exp = (cur if cur > now else now) + timedelta(days=days)
     display_name = f'@{u["username"]}' if u.get("username") else (u.get("full_name") or str(u["tg_id"]))
-    await db_exec("UPDATE users SET expires_at=?,plan=?,is_active=1,subscribed_at=COALESCE(subscribed_at,?) WHERE tg_id=?",(new_exp.isoformat(),plan_key,now.isoformat(),u["tg_id"]))
+    await db_exec("UPDATE users SET expires_at=?,plan=?,is_active=1,subscribed_at=COALESCE(subscribed_at,?),notified_3d=0,notified_1d=0 WHERE tg_id=?",(new_exp.isoformat(),plan_key,now.isoformat(),u["tg_id"]))
     link = await create_invite_link()
     try:
         if reason == "card":
